@@ -3,7 +3,8 @@ import re
 import time
 import requests
 from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Form
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
@@ -15,7 +16,7 @@ app = FastAPI(
 )
 
 # -----------------------------------------------------------------------------
-# 1. MODELOS DE ENTRADA Y SALIDA (PYDANTIC)
+# 1. MODELOS DE DATOS (PYDANTIC)
 # -----------------------------------------------------------------------------
 class RequestRemito(BaseModel):
     url_drive: str = Field(..., description="Enlace público del archivo o escaneo alojado en Google Drive")
@@ -34,10 +35,7 @@ class RespuestaExtraccion(BaseModel):
     numero_remito: Optional[str] = Field(None, description="Número del comprobante / remito")
     remitente: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
     destinatario: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
-    valor_declarado: Optional[float] = Field(
-        None, 
-        description="Valor declarado asegurado de la carga. Si es factura, el subtotal neto sin impuestos."
-    )
+    valor_declarado: Optional[float] = Field(None, description="Valor declarado asegurado o subtotal neto sin impuestos.")
     bultos: Optional[int] = Field(None, description="Cantidad total de bultos si figura")
     peso_kg: Optional[float] = Field(None, description="Peso total en kilogramos si figura")
 
@@ -59,7 +57,6 @@ def descargar_bytes_drive(url: str) -> tuple[bytes, str]:
         raise ValueError("No se pudo extraer el ID del archivo de Google Drive. Verificá que el enlace sea correcto.")
     
     download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    
     session = requests.Session()
     response = session.get(download_url, timeout=30)
     
@@ -92,45 +89,26 @@ def descargar_bytes_drive(url: str) -> tuple[bytes, str]:
 
     return content_bytes, mime_type
 
-# -----------------------------------------------------------------------------
-# 3. ENDPOINT API PARA EL ERP
-# -----------------------------------------------------------------------------
-@app.post("/api/v1/procesar-remito", response_model=RespuestaExtraccion)
-def procesar_remito_endpoint(payload: RequestRemito):
+# Lógica compartida de procesamiento de IA
+def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> RespuestaExtraccion:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise HTTPException(
-            status_code=500, 
-            detail="No se encontró la GEMINI_API_KEY configurada en las variables de entorno del servidor."
-        )
-
-    try:
-        archivo_bytes, mime_type = descargar_bytes_drive(payload.url_drive)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Fallo en la comunicación con Google Drive: {str(e)}")
+        raise HTTPException(status_code=500, detail="No se encontró la GEMINI_API_KEY configurada.")
 
     prompt_analisis = """
     Sos un analista operativo experto en logística y despacho de mercadería.
     Analizá el documento provisto (remito, factura o comprobante de entrega) y extraé los campos exactos:
-
     Reglas de Negocio Estrictas:
     1. Identificación y Contacto:
-       - Remitente: Es el emisor que despacha la mercadería (origen). Extraé CUIT/DNI, dirección, localidad, provincia, teléfono y correo electrónico.
-       - Destinatario: Es el receptor final de la carga (destino). Extraé CUIT/DNI, dirección de entrega, localidad, provincia, teléfono y correo electrónico.
-    2. Número de Comprobante: Extraé el número de remito o factura completo.
-    3. Valor Declarado:
-       - Si el comprobante es un REMITO: extraé el valor declarado o asegurado que figure al pie o en observaciones.
-       - Si el comprobante es una FACTURA: extraé el SUBTOTAL o IMPORTE NETO GRAVADO (monto total sin IVA ni percepciones/impuestos).
-    4. Calidad: Si algún dato numérico, geográfico o de contacto no figura o resulta ilegible, devolvé null en ese campo.
+       - Remitente: Emisor que despacha (origen). Extraé CUIT/DNI, dirección, localidad, provincia, teléfono y correo electrónico.
+       - Destinatario: Receptor final (destino). Extraé CUIT/DNI, dirección de entrega, localidad, provincia, teléfono y correo electrónico.
+    2. Número de Comprobante: Extraé el número completo.
+    3. Valor Declarado: Remito (valor declarado/asegurado) o Factura (subtotal neto gravado sin impuestos).
+    4. Calidad: Si algún dato numérico, geográfico o de contacto no figura o es ilegible, devolvé null.
     """
 
     client = genai.Client(api_key=api_key)
-    documento_part = types.Part.from_bytes(
-        data=archivo_bytes,
-        mime_type=mime_type
-    )
+    documento_part = types.Part.from_bytes(data=archivo_bytes, mime_type=mime_type)
 
     max_reintentos = 3
     for intento in range(max_reintentos):
@@ -150,6 +128,103 @@ def procesar_remito_endpoint(payload: RequestRemito):
                 time.sleep(2 * (intento + 1))
             else:
                 raise HTTPException(status_code=500, detail=f"Error durante el procesamiento del modelo: {str(e)}")
+
+# -----------------------------------------------------------------------------
+# 3. ENDPOINTS DE LA API
+# -----------------------------------------------------------------------------
+
+# Endpoint JSON tradicional (para el ERP / sistemas)
+@app.post("/api/v1/procesar-remito", response_model=RespuestaExtraccion)
+def procesar_remito_endpoint(payload: RequestRemito):
+    try:
+        archivo_bytes, mime_type = descargar_bytes_drive(payload.url_drive)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fallo en la comunicación con Google Drive: {str(e)}")
+    
+    return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
+
+
+# Nuevo Endpoint de Formulario (con campo dedicado en la interfaz web de pruebas)
+@app.post("/api/v1/procesar-remito-form", response_model=RespuestaExtraccion, include_in_schema=True)
+def procesar_remito_form(url_drive: str = Form(..., description="Pegá aquí el enlace público de Google Drive del remito o factura")):
+    try:
+        archivo_bytes, mime_type = descargar_bytes_drive(url_drive)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fallo en la comunicación con Google Drive: {str(e)}")
+    
+    return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
+
+
+# Pantalla de pruebas visual amigable integrada en la raíz (/)
+@app.get("/", response_class=HTMLResponse)
+def panel_prueba_visual():
+    return """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Prueba de Digitalización de Remitos - Raosa</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 40px; color: #333; }
+            .container { max-width: 700px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: auto; }
+            h2 { color: #1e293b; margin-top: 0; }
+            label { font-weight: bold; display: block; margin-bottom: 8px; }
+            input[type="text"] { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; margin-bottom: 20px; }
+            button { background-color: #2563eb; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+            button:hover { background-color: #1d4ed8; }
+            pre { background: #0f172a; color: #38bdf8; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 13px; margin-top: 20px; display: none; }
+            .loading { color: #64748b; font-style: italic; display: none; margin-top: 10px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Módulo de Pruebas - Transporte Raosa</h2>
+            <p>Ingresá el enlace de Google Drive del documento para extraer los datos logísticos de forma automática.</p>
+            <form id="remitoForm">
+                <label for="url_drive">Enlace de Google Drive:</label>
+                <input type="text" id="url_drive" name="url_drive" placeholder="https://drive.google.com/file/d/..." required>
+                <button type="submit">Procesar Comprobante</button>
+            </form>
+            <div id="loading" class="loading">Procesando documento con inteligencia artificial... Aguarde unos segundos.</div>
+            <pre id="resultado"></pre>
+        </div>
+        <script>
+            document.getElementById('remitoForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const url = document.getElementById('url_drive').value;
+                const resPre = document.getElementById('resultado');
+                const loadingDiv = document.getElementById('loading');
+                
+                resPre.style.display = 'none';
+                loadingDiv.style.display = 'block';
+
+                const formData = new URLSearchParams();
+                formData.append('url_drive', url);
+
+                try {
+                    const response = await fetch('/api/v1/procesar-remito-form', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData
+                    });
+                    const data = await response.json();
+                    loadingDiv.style.display = 'none';
+                    resPre.style.display = 'block';
+                    resPre.textContent = JSON.stringify(data, null, 2);
+                } catch (err) {
+                    loadingDiv.style.display = 'none';
+                    resPre.style.display = 'block';
+                    resPre.textContent = 'Error de conexión con el servidor.';
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
 
 if __name__ == "__main__":
     import uvicorn
