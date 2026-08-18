@@ -113,7 +113,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
     for intento in range(max_reintentos):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=[documento_part, prompt_analisis],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
