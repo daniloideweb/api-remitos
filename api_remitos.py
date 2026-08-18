@@ -19,7 +19,7 @@ app = FastAPI(
 # 1. MODELOS DE DATOS (PYDANTIC)
 # -----------------------------------------------------------------------------
 class RequestRemito(BaseModel):
-    url_drive: str = Field(..., description="Enlace público del archivo o escaneo alojado en Google Drive")
+    url_drive: str = Field(..., description="Enlace público del archivo alojado en Google Drive")
 
 class UbicacionEntidad(BaseModel):
     razon_social: Optional[str] = Field(None, description="Razón Social o Nombre")
@@ -27,20 +27,20 @@ class UbicacionEntidad(BaseModel):
     direccion: Optional[str] = Field(None, description="Calle y número")
     localidad: Optional[str] = Field(None, description="Localidad o Ciudad")
     provincia: Optional[str] = Field(None, description="Provincia")
-    telefono: Optional[str] = Field(None, description="Teléfono de contacto si figura")
-    email: Optional[str] = Field(None, description="Correo electrónico de contacto si figura")
+    telefono: Optional[str] = Field(None, description="Teléfono de contacto")
+    email: Optional[str] = Field(None, description="Correo electrónico de contacto")
 
 class RespuestaExtraccion(BaseModel):
     tipo_comprobante: Optional[str] = Field(None, description="REMITO, FACTURA u OTRO")
     numero_remito: Optional[str] = Field(None, description="Número del comprobante / remito")
     remitente: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
     destinatario: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
-    valor_declarado: Optional[float] = Field(None, description="Valor declarado asegurado o subtotal neto sin impuestos.")
-    bultos: Optional[int] = Field(None, description="Cantidad total de bultos si figura")
-    peso_kg: Optional[float] = Field(None, description="Peso total en kilogramos si figura")
+    valor_declarado: Optional[float] = Field(None, description="Valor declarado/asegurado o subtotal neto sin impuestos.")
+    bultos: Optional[int] = Field(None, description="Cantidad total de bultos")
+    peso_kg: Optional[float] = Field(None, description="Peso total en kilogramos")
 
 # -----------------------------------------------------------------------------
-# 2. FUNCIONES AUXILIARES DE DESCARGA DE GOOGLE DRIVE
+# 2. FUNCIONES DE DESCARGA Y PROCESAMIENTO
 # -----------------------------------------------------------------------------
 def extraer_file_id_drive(url: str) -> Optional[str]:
     match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
@@ -89,7 +89,6 @@ def descargar_bytes_drive(url: str) -> tuple[bytes, str]:
 
     return content_bytes, mime_type
 
-# Lógica compartida de procesamiento de IA
 def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> RespuestaExtraccion:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -104,7 +103,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
        - Destinatario: Receptor final (destino). Extraé CUIT/DNI, dirección de entrega, localidad, provincia, teléfono y correo electrónico.
     2. Número de Comprobante: Extraé el número completo.
     3. Valor Declarado: Remito (valor declarado/asegurado) o Factura (subtotal neto gravado sin impuestos).
-    4. Calidad: Si algún dato numérico, geográfico o de contacto no figura o es ilegible, devolvé null.
+    4. Calidad: Si algún dato no figura o es ilegible, devolvé null.
     """
 
     client = genai.Client(api_key=api_key)
@@ -114,7 +113,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
     for intento in range(max_reintentos):
         try:
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-2.5-flash",
                 contents=[documento_part, prompt_analisis],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -130,10 +129,22 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
                 raise HTTPException(status_code=500, detail=f"Error durante el procesamiento del modelo: {str(e)}")
 
 # -----------------------------------------------------------------------------
-# 3. ENDPOINTS DE LA API
+# 3. ENDPOINTS DISPONIBLES
 # -----------------------------------------------------------------------------
 
-# Endpoint JSON tradicional (para el ERP / sistemas)
+# Endpoint GET (Para llamadas directas por URL en navegador)
+@app.get("/api/v1/procesar-remito-get", response_model=RespuestaExtraccion)
+def procesar_remito_get(url_drive: str):
+    try:
+        archivo_bytes, mime_type = descargar_bytes_drive(url_drive)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fallo en la comunicación con Google Drive: {str(e)}")
+    
+    return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
+
+# Endpoint POST tradicional (JSON Body para ERP)
 @app.post("/api/v1/procesar-remito", response_model=RespuestaExtraccion)
 def procesar_remito_endpoint(payload: RequestRemito):
     try:
@@ -145,10 +156,9 @@ def procesar_remito_endpoint(payload: RequestRemito):
     
     return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
 
-
-# Nuevo Endpoint de Formulario (con campo dedicado en la interfaz web de pruebas)
-@app.post("/api/v1/procesar-remito-form", response_model=RespuestaExtraccion, include_in_schema=True)
-def procesar_remito_form(url_drive: str = Form(..., description="Pegá aquí el enlace público de Google Drive del remito o factura")):
+# Endpoint Formulario
+@app.post("/api/v1/procesar-remito-form", response_model=RespuestaExtraccion)
+def procesar_remito_form(url_drive: str = Form(...)):
     try:
         archivo_bytes, mime_type = descargar_bytes_drive(url_drive)
     except ValueError as e:
@@ -158,8 +168,7 @@ def procesar_remito_form(url_drive: str = Form(..., description="Pegá aquí el 
     
     return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
 
-
-# Pantalla de pruebas visual amigable integrada en la raíz (/)
+# Interfaz visual de prueba en raíz
 @app.get("/", response_class=HTMLResponse)
 def panel_prueba_visual():
     return """
@@ -167,60 +176,39 @@ def panel_prueba_visual():
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <title>Prueba de Digitalización de Remitos - Raosa</title>
+        <title>Digitalizador de Remitos - Raosa</title>
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 40px; color: #333; }
-            .container { max-width: 700px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: auto; }
-            h2 { color: #1e293b; margin-top: 0; }
-            label { font-weight: bold; display: block; margin-bottom: 8px; }
-            input[type="text"] { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; margin-bottom: 20px; }
-            button { background-color: #2563eb; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
-            button:hover { background-color: #1d4ed8; }
-            pre { background: #0f172a; color: #38bdf8; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 13px; margin-top: 20px; display: none; }
-            .loading { color: #64748b; font-style: italic; display: none; margin-top: 10px; }
+            body { font-family: Arial, sans-serif; background: #f1f5f9; padding: 40px; }
+            .card { max-width: 650px; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: auto; }
+            input[type="text"] { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 4px; }
+            button { width: 100%; background: #0284c7; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+            pre { background: #0f172a; color: #38bdf8; padding: 15px; border-radius: 6px; overflow-x: auto; display: none; }
         </style>
     </head>
     <body>
-        <div class="container">
+        <div class="card">
             <h2>Módulo de Pruebas - Transporte Raosa</h2>
-            <p>Ingresá el enlace de Google Drive del documento para extraer los datos logísticos de forma automática.</p>
-            <form id="remitoForm">
-                <label for="url_drive">Enlace de Google Drive:</label>
-                <input type="text" id="url_drive" name="url_drive" placeholder="https://drive.google.com/file/d/..." required>
-                <button type="submit">Procesar Comprobante</button>
+            <form id="f">
+                <label>Enlace de Google Drive:</label>
+                <input type="text" id="u" placeholder="https://drive.google.com/file/d/..." required>
+                <button type="submit">Procesar Documento</button>
             </form>
-            <div id="loading" class="loading">Procesando documento con inteligencia artificial... Aguarde unos segundos.</div>
-            <pre id="resultado"></pre>
+            <p id="c" style="display:none;color:#64748b;">Procesando comprobante con IA...</p>
+            <pre id="r"></pre>
         </div>
         <script>
-            document.getElementById('remitoForm').addEventListener('submit', async function(e) {
+            document.getElementById('f').onsubmit = async (e) => {
                 e.preventDefault();
-                const url = document.getElementById('url_drive').value;
-                const resPre = document.getElementById('resultado');
-                const loadingDiv = document.getElementById('loading');
-                
-                resPre.style.display = 'none';
-                loadingDiv.style.display = 'block';
-
-                const formData = new URLSearchParams();
-                formData.append('url_drive', url);
-
-                try {
-                    const response = await fetch('/api/v1/procesar-remito-form', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: formData
-                    });
-                    const data = await response.json();
-                    loadingDiv.style.display = 'none';
-                    resPre.style.display = 'block';
-                    resPre.textContent = JSON.stringify(data, null, 2);
-                } catch (err) {
-                    loadingDiv.style.display = 'none';
-                    resPre.style.display = 'block';
-                    resPre.textContent = 'Error de conexión con el servidor.';
-                }
-            });
+                document.getElementById('c').style.display = 'block';
+                document.getElementById('r').style.display = 'none';
+                const fd = new URLSearchParams();
+                fd.append('url_drive', document.getElementById('u').value);
+                const res = await fetch('/api/v1/procesar-remito-form', { method: 'POST', body: fd });
+                const data = await res.json();
+                document.getElementById('c').style.display = 'none';
+                document.getElementById('r').style.display = 'block';
+                document.getElementById('r').textContent = JSON.stringify(data, null, 2);
+            };
         </script>
     </body>
     </html>
