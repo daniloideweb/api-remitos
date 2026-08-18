@@ -12,7 +12,7 @@ from google.genai import types
 app = FastAPI(
     title="API de Digitalización y Extracción de Remitos",
     description="Microservicio para procesar comprobantes de Google Drive y extraer datos para ERP.",
-    version="1.2.0"
+    version="1.3.0"
 )
 
 # -----------------------------------------------------------------------------
@@ -113,7 +113,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
     for intento in range(max_reintentos):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=[documento_part, prompt_analisis],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -131,7 +131,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
 # 3. ENDPOINTS DISPONIBLES
 # -----------------------------------------------------------------------------
 
-# Endpoint GET (Para llamadas directas por URL en navegador o ERP)
+# Endpoint GET (Llamadas directas por URL en navegador / ERP)
 @app.get("/api/v1/procesar-remito-get", response_model=RespuestaExtraccion)
 def procesar_remito_get(url_drive: str):
     try:
@@ -155,7 +155,7 @@ def procesar_remito_endpoint(payload: RequestRemito):
     
     return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
 
-# Endpoint Formulario
+# Endpoint Formulario (Para pruebas web)
 @app.post("/api/v1/procesar-remito-form", response_model=RespuestaExtraccion)
 def procesar_remito_form(url_drive: str = Form(...)):
     try:
