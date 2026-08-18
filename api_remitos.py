@@ -11,8 +11,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API de Digitalización y Extracción de Remitos",
-    description="Microservicio de alta velocidad para procesar comprobantes de Google Drive y extraer datos para ERP.",
-    version="1.1.0"
+    description="Microservicio para procesar enlaces de Google Drive y extraer datos logísticos para ERP.",
+    version="1.0.0"
 )
 
 # -----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def descargar_bytes_drive(url: str) -> tuple[bytes, str]:
             break
             
     if response.status_code != 200:
-        raise ValueError(f"Error al descargar desde Drive (Código {response.status_code}). Asegurate de que el archivo tenga acceso en 'Cualquier persona con el enlace'.")
+        raise ValueError(f"Error al descargar desde Drive (Código {response.status_code}). Asegurate de que el archivo tenga acceso general en 'Cualquier persona con el enlace'.")
 
     content_bytes = response.content
     content_type = response.headers.get("Content-Type", "")
@@ -119,13 +119,12 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
                     response_mime_type="application/json",
                     response_schema=RespuestaExtraccion,
                     temperature=0.0,
-                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
             )
             return RespuestaExtraccion.model_validate_json(response.text)
         except Exception as e:
             if intento < max_reintentos - 1:
-                time.sleep(1.5 * (intento + 1))
+                time.sleep(2 * (intento + 1))
             else:
                 raise HTTPException(status_code=500, detail=f"Error durante el procesamiento del modelo: {str(e)}")
 
@@ -133,7 +132,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
 # 3. ENDPOINTS DISPONIBLES
 # -----------------------------------------------------------------------------
 
-# Endpoint GET (Llamadas directas por URL en navegador / ERP)
+# Endpoint GET (Para llamadas directas por URL en navegador o ERP)
 @app.get("/api/v1/procesar-remito-get", response_model=RespuestaExtraccion)
 def procesar_remito_get(url_drive: str):
     try:
@@ -157,7 +156,7 @@ def procesar_remito_endpoint(payload: RequestRemito):
     
     return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
 
-# Endpoint Formulario (Para pruebas web)
+# Endpoint Formulario
 @app.post("/api/v1/procesar-remito-form", response_model=RespuestaExtraccion)
 def procesar_remito_form(url_drive: str = Form(...)):
     try:
@@ -169,7 +168,7 @@ def procesar_remito_form(url_drive: str = Form(...)):
     
     return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
 
-# Panel visual interactivo de prueba en la raíz (/)
+# Interfaz visual de prueba en raíz
 @app.get("/", response_class=HTMLResponse)
 def panel_prueba_visual():
     return """
