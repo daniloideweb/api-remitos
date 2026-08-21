@@ -11,8 +11,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API de Digitalización y Extracción de Remitos",
-    description="Microservicio de extracción de comprobantes con detección de contrarreembolso para ERP.",
-    version="1.4.0"
+    description="Microservicio de extracción de comprobantes con detección de condición de pago (Origen/Destino) y contrarreembolso para ERP.",
+    version="1.6.0"
 )
 
 # -----------------------------------------------------------------------------
@@ -36,8 +36,9 @@ class RespuestaExtraccion(BaseModel):
     remitente: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
     destinatario: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
     valor_declarado: Optional[float] = Field(None, description="Valor declarado/asegurado o subtotal neto sin impuestos.")
-    es_contrarreembolso: bool = Field(default=False, description="Indica si el comprobante especifica cobro contra entrega / contrarreembolso / CR")
-    monto_contrarreembolso: Optional[float] = Field(None, description="Monto a cobrar en destino si aplica contrarreembolso")
+    condicion_pago_flete: Optional[str] = Field(None, description="ORIGEN (pago en origen, contado remitente, flete pago) o DESTINO (a pagar, cobro en destino, contra entrega de flete). Si no figura, null.")
+    es_contrarreembolso: bool = Field(default=False, description="Indica si el comprobante especifica cobro de mercadería contra entrega / contrarreembolso / CR")
+    monto_contrarreembolso: Optional[float] = Field(None, description="Monto a cobrar en destino por la mercadería si aplica contrarreembolso")
     bultos: Optional[int] = Field(None, description="Cantidad total de bultos")
     peso_kg: Optional[float] = Field(None, description="Peso total en kilogramos")
 
@@ -98,7 +99,7 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
 
     prompt_analisis = """
     Sos un analista operativo experto en logística, transporte expreso y despacho de mercadería.
-    Analizá el documento provisto (remito, factura o comprobante de entrega) y extraé los siguientes campos exactos:
+    Analizá el documento provisto (remito, guía, factura o comprobante de entrega) y extraé con precisión los siguientes datos:
 
     Reglas de Negocio Estrictas:
     1. Identificación de Entidades:
@@ -106,12 +107,16 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
        - Destinatario: Receptor final (destino). Extraé CUIT/DNI, dirección de entrega, localidad, provincia, teléfono y correo electrónico.
     2. Número de Comprobante: Extraé el número completo visible.
     3. Valor Declarado: Remito (valor declarado/asegurado de la mercadería) o Factura (subtotal neto gravado sin impuestos).
-    4. Condición de Contrarreembolso (CR):
-       - Identificá si existe indicación de cobro contra entrega, contrarreembolso, "C/R", "Cobrar al entregar", o casillas tildadas de cobranza en destino.
+    4. Condición de Pago del Flete (condicion_pago_flete):
+       - Si el flete o porte figura como pagado en origen, abono en origen, contado remitente, flete pago: asignar "ORIGEN".
+       - Si el flete figura a pagar en destino, cobro en destino, flete a cobrar, cuenta corriente destino: asignar "DESTINO".
+       - Si no se encuentra especificada la condición de pago del flete: asignar null.
+    5. Condición de Contrarreembolso de Mercadería (CR):
+       - Identificá si existe cobro contra entrega del valor de la mercadería, contrarreembolso, "C/R", "Cobrar al entregar".
        - es_contrarreembolso: Asignar true si está presente la condición, false de lo contrario.
-       - monto_contrarreembolso: Extraé el importe numérico a cobrar al destinatario (si aplica). Si no figura o es false, devolver null.
-    5. Parámetros Físicos: Cantidad de bultos y peso total en kg si figuran.
-    6. Calidad: Si algún dato puntual no figura o es ilegible, devolvé null (o false para booleanos).
+       - monto_contrarreembolso: Extraé el importe numérico exacto a cobrar al destinatario por la mercadería (si aplica). Si no figura o es false, devolver null.
+    6. Parámetros Físicos: Cantidad total de bultos y peso total en kg si figuran.
+    7. Calidad: Si algún dato puntual no figura o es ilegible, devolvé null (o false para booleanos).
     """
 
     client = genai.Client(api_key=api_key)
