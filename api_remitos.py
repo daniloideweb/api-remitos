@@ -11,8 +11,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API de Digitalización y Extracción de Remitos",
-    description="Microservicio para procesar comprobantes de Google Drive y extraer datos para ERP.",
-    version="1.3.0"
+    description="Microservicio de extracción de comprobantes con detección de contrarreembolso para ERP.",
+    version="1.4.0"
 )
 
 # -----------------------------------------------------------------------------
@@ -36,6 +36,8 @@ class RespuestaExtraccion(BaseModel):
     remitente: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
     destinatario: UbicacionEntidad = Field(default_factory=UbicacionEntidad)
     valor_declarado: Optional[float] = Field(None, description="Valor declarado/asegurado o subtotal neto sin impuestos.")
+    es_contrarreembolso: bool = Field(default=False, description="Indica si el comprobante especifica cobro contra entrega / contrarreembolso / CR")
+    monto_contrarreembolso: Optional[float] = Field(None, description="Monto a cobrar en destino si aplica contrarreembolso")
     bultos: Optional[int] = Field(None, description="Cantidad total de bultos")
     peso_kg: Optional[float] = Field(None, description="Peso total en kilogramos")
 
@@ -85,7 +87,7 @@ def descargar_bytes_drive(url: str) -> tuple[bytes, str]:
     elif "pdf" in content_type:
         mime_type = "application/pdf"
     else:
-        mime_type = "application/pdf"
+        mime_type = "image/jpeg"
 
     return content_bytes, mime_type
 
@@ -95,15 +97,21 @@ def ejecutar_extraccion_gemini(archivo_bytes: bytes, mime_type: str) -> Respuest
         raise HTTPException(status_code=500, detail="No se encontró la GEMINI_API_KEY configurada en las variables de entorno.")
 
     prompt_analisis = """
-    Sos un analista operativo experto en logística y despacho de mercadería.
-    Analizá el documento provisto (remito, factura o comprobante de entrega) y extraé los campos exactos:
+    Sos un analista operativo experto en logística, transporte expreso y despacho de mercadería.
+    Analizá el documento provisto (remito, factura o comprobante de entrega) y extraé los siguientes campos exactos:
+
     Reglas de Negocio Estrictas:
-    1. Identificación y Contacto:
+    1. Identificación de Entidades:
        - Remitente: Emisor que despacha (origen). Extraé CUIT/DNI, dirección, localidad, provincia, teléfono y correo electrónico.
        - Destinatario: Receptor final (destino). Extraé CUIT/DNI, dirección de entrega, localidad, provincia, teléfono y correo electrónico.
-    2. Número de Comprobante: Extraé el número completo.
-    3. Valor Declarado: Remito (valor declarado/asegurado) o Factura (subtotal neto gravado sin impuestos).
-    4. Calidad: Si algún dato no figura o es ilegible, devolvé null.
+    2. Número de Comprobante: Extraé el número completo visible.
+    3. Valor Declarado: Remito (valor declarado/asegurado de la mercadería) o Factura (subtotal neto gravado sin impuestos).
+    4. Condición de Contrarreembolso (CR):
+       - Identificá si existe indicación de cobro contra entrega, contrarreembolso, "C/R", "Cobrar al entregar", o casillas tildadas de cobranza en destino.
+       - es_contrarreembolso: Asignar true si está presente la condición, false de lo contrario.
+       - monto_contrarreembolso: Extraé el importe numérico a cobrar al destinatario (si aplica). Si no figura o es false, devolver null.
+    5. Parámetros Físicos: Cantidad de bultos y peso total en kg si figuran.
+    6. Calidad: Si algún dato puntual no figura o es ilegible, devolvé null (o false para booleanos).
     """
 
     client = genai.Client(api_key=api_key)
@@ -167,7 +175,7 @@ def procesar_remito_form(url_drive: str = Form(...)):
     
     return ejecutar_extraccion_gemini(archivo_bytes, mime_type)
 
-# Interfaz visual de prueba en raíz
+# Panel visual interactivo de prueba en la raíz (/)
 @app.get("/", response_class=HTMLResponse)
 def panel_prueba_visual():
     return """
