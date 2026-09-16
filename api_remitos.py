@@ -12,7 +12,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="1.5.0"
+    version="1.6.0"
 )
 
 app.add_middleware(
@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inicializa cliente de Gemini con GEMINI_API_KEY
+# Inicializa cliente de Gemini utilizando la variable GEMINI_API_KEY
 client = genai.Client()
 
 class RemitoRequest(BaseModel):
@@ -134,7 +134,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         temperature=0.1
     )
 
-    modelos = ["gemini-1.5-flash", "gemini-2.0-flash"]
+    modelos = ["gemini-3.6-flash"]
     ultimo_error = None
 
     for modelo in modelos:
