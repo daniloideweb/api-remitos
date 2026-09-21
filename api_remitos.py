@@ -12,7 +12,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="1.6.0"
+    version="1.7.0"
 )
 
 app.add_middleware(
@@ -49,11 +49,9 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
-    # Endpoint optimizado: 1600px de resolución para descarga veloz
     alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
     res = session.get(alt_url, headers=headers, timeout=25)
 
-    # Si no responde el endpoint directo, recurre a la descarga estándar
     if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
         download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
         res = session.get(download_url, headers=headers, timeout=25)
@@ -68,7 +66,6 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
             detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso en 'Cualquier persona con el enlace'."
         )
 
-    # Detección de tipo MIME
     content_type = res.headers.get("Content-Type", "").lower()
     if res.content.startswith(b"%PDF") or "pdf" in content_type:
         mime_type = "application/pdf"
@@ -134,11 +131,18 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         temperature=0.1
     )
 
-    modelos = ["gemini-3.6-flash"]
+    # Lista con orden de prioridad: si uno tiene pico de demanda 503, salta al siguiente
+    candidatos_modelos = [
+        "gemini-2.5-flash",
+        "gemini-3.6-flash",
+        "gemini-1.5-pro",
+        "gemini-2.5-pro"
+    ]
+
     ultimo_error = None
 
-    for modelo in modelos:
-        for intento in range(3):
+    for modelo in candidatos_modelos:
+        for intento in range(2):
             try:
                 response = client.models.generate_content(
                     model=modelo,
@@ -148,8 +152,12 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 return json.loads(response.text.strip())
             except Exception as e:
                 ultimo_error = str(e)
+                # Si el modelo no existe (404), salta inmediatamente al siguiente candidato
+                if "404" in ultimo_error or "NOT_FOUND" in ultimo_error:
+                    break
+                # Si está saturado (503 / 429), espera brevemente antes de reintentar
                 if any(err in ultimo_error for err in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
-                    time.sleep(2 * (intento + 1))
+                    time.sleep(2)
                     continue
                 break
 
