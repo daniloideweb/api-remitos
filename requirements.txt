@@ -3,4 +3,4 @@ uvicorn
 requests
 pydantic
 google-genai
-groq
+pillow
