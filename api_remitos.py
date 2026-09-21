@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.3.0"
+    version="2.4.0"
 )
 
 app.add_middleware(
@@ -33,7 +33,7 @@ class RemitoRequest(BaseModel):
 
 
 def obtener_id_drive(url: str) -> str:
-    """Extrae el ID del archivo de cualquier enlace de Google Drive."""
+    """Extrae el ID del archivo de cualquier formato de enlace de Google Drive."""
     match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
     if match:
         return match.group(1)
@@ -44,7 +44,7 @@ def obtener_id_drive(url: str) -> str:
 
 
 def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
-    """Corrige la orientación EXIF de la imagen si está rotada."""
+    """Corrige la orientación física y metadatos EXIF de la imagen."""
     if not mime_type.startswith("image/"):
         return file_bytes, mime_type
     try:
@@ -60,7 +60,7 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
 
 
 def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
-    """Descarga el binario real de Google Drive."""
+    """Descarga el archivo real omitiendo previsualizaciones intermedias."""
     file_id = obtener_id_drive(url)
     session = requests.Session()
     headers = {
@@ -81,7 +81,7 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
     if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
         raise HTTPException(
             status_code=400,
-            detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso público."
+            detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso en 'Cualquier persona con el enlace'."
         )
 
     content_type = res.headers.get("Content-Type", "").lower()
@@ -92,7 +92,6 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
     else:
         mime_type = "image/jpeg"
 
-    # Corrige orientación física de la imagen
     clean_bytes, clean_mime = normalizar_imagen(res.content, mime_type)
     return clean_bytes, clean_mime
 
@@ -182,9 +181,21 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
             return json.loads(response.text.strip())
         except Exception as e:
             ultimo_error = str(e)
-            if any(err in ultimo_error for err in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
-                time.sleep(3 + (intento * 2))
+            
+            # Si Google pide esperar por límite de RPM (429) o sobredemanda (503)
+            if any(err in ultimo_error for err in ["429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE"]):
+                espera = 4.0
+                match_delay = re.search(r"retryDelay':\s*'(\d+)", ultimo_error)
+                if match_delay:
+                    espera = float(match_delay.group(1)) + 1.0
+                else:
+                    match_sec = re.search(r"retry in (\d+(?:\.\d+)?)s", ultimo_error)
+                    if match_sec:
+                        espera = float(match_sec.group(1)) + 1.0
+
+                time.sleep(espera)
                 continue
+
             break
 
     raise HTTPException(
