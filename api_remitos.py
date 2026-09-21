@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
-# Cliente Groq condicional
+# Cliente condicional de Groq para respaldo automático
 groq_client = None
 if os.getenv("GROQ_API_KEY"):
     from groq import Groq
@@ -19,7 +19,7 @@ if os.getenv("GROQ_API_KEY"):
 app = FastAPI(
     title="API Extracción de Remitos",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -37,6 +37,7 @@ class RemitoRequest(BaseModel):
 
 
 def obtener_id_drive(url: str) -> str:
+    """Extrae el ID del archivo de cualquier formato de enlace de Drive."""
     match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
     if match:
         return match.group(1)
@@ -47,6 +48,7 @@ def obtener_id_drive(url: str) -> str:
 
 
 def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
+    """Descarga el binario real omitiendo previsualizaciones HTML y optimizando a 1600px."""
     file_id = obtener_id_drive(url)
     session = requests.Session()
     headers = {
@@ -137,7 +139,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
 
     ultimo_error = None
 
-    # Intento con Gemini
+    # 1. Intento inicial con Gemini 3.6 Flash
     for intento in range(2):
         try:
             response = client.models.generate_content(
@@ -153,31 +155,34 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 continue
             break
 
-    # Fallback inmediato a Groq si Google está saturado
+    # 2. Respaldo transparente en Groq Vision si Google tiene cola/saturación
     if groq_client and mime_type.startswith("image/"):
-        try:
-            b64_img = base64.b64encode(file_bytes).decode("utf-8")
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": PROMPT_REMITO},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{b64_img}"
+        modelos_groq = ["qwen/qwen3.8-27b", "meta-llama/llama-4-scenic"]
+        for mod_g in modelos_groq:
+            try:
+                b64_img = base64.b64encode(file_bytes).decode("utf-8")
+                chat_completion = groq_client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": PROMPT_REMITO},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{mime_type};base64,{b64_img}"
+                                    }
                                 }
-                            }
-                        ]
-                    }
-                ],
-                model="llama-3.2-11b-vision-preview",
-                response_format={"type": "json_object"}
-            )
-            return json.loads(chat_completion.choices[0].message.content.strip())
-        except Exception as eg:
-            ultimo_error = f"Gemini: {ultimo_error} | Groq: {str(eg)}"
+                            ]
+                        }
+                    ],
+                    model=mod_g,
+                    response_format={"type": "json_object"}
+                )
+                return json.loads(chat_completion.choices[0].message.content.strip())
+            except Exception as eg:
+                ultimo_error = f"Gemini: {ultimo_error} | Groq ({mod_g}): {str(eg)}"
+                continue
 
     raise HTTPException(
         status_code=500,
