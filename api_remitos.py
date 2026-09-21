@@ -2,7 +2,6 @@ import os
 import re
 import json
 import time
-import base64
 import requests
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,16 +9,10 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
-# Cliente condicional de Groq para respaldo
-groq_client = None
-if os.getenv("GROQ_API_KEY"):
-    from groq import Groq
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
 app = FastAPI(
     title="API Extracción de Remitos",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.2.0"
+    version="1.5.0"
 )
 
 app.add_middleware(
@@ -30,6 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Inicializa cliente de Gemini con GEMINI_API_KEY
 client = genai.Client()
 
 class RemitoRequest(BaseModel):
@@ -55,9 +49,11 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
+    # Endpoint optimizado: 1600px de resolución para descarga veloz
     alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
     res = session.get(alt_url, headers=headers, timeout=25)
 
+    # Si no responde el endpoint directo, recurre a la descarga estándar
     if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
         download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
         res = session.get(download_url, headers=headers, timeout=25)
@@ -72,6 +68,7 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
             detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso en 'Cualquier persona con el enlace'."
         )
 
+    # Detección de tipo MIME
     content_type = res.headers.get("Content-Type", "").lower()
     if res.content.startswith(b"%PDF") or "pdf" in content_type:
         mime_type = "application/pdf"
@@ -83,104 +80,79 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
     return res.content, mime_type
 
 
-PROMPT_REMITO = """
-Sos un experto en logística de transporte y remitos de carga.
-Analizá detalladamente este comprobante y extraé los datos en un JSON estricto con las siguientes claves:
-
-{
-  "remitente": {
-    "razon_social": str o null,
-    "cuit": str o null,
-    "domicilio": str o null,
-    "localidad": str o null,
-    "provincia": str o null
-  },
-  "destinatario": {
-    "razon_social": str o null,
-    "cuit": str o null,
-    "domicilio": str o null,
-    "localidad": str o null,
-    "provincia": str o null
-  },
-  "comprobante": {
-    "tipo": str o null,
-    "numero": str o null,
-    "fecha": str o null,
-    "valor_declarado": float o null
-  },
-  "flete": {
-    "condicion_pago": str ("ORIGEN" o "DESTINO" o null),
-    "contrarreembolso": bool,
-    "monto_contrarreembolso": float o null
-  },
-  "carga": {
-    "cantidad_bultos": int o null,
-    "peso_kg": float o null,
-    "volumen_m3": float o null
-  },
-  "observaciones": str o null
-}
-
-Reglas:
-- Flete en destino o por cobrar -> condicion_pago = "DESTINO". Si está abonado/origen -> "ORIGEN".
-- Si figura contra reembolso o C/R -> contrarreembolso = true y poner el monto numérico en monto_contrarreembolso.
-- Responder ÚNICAMENTE el JSON crudo, sin etiquetas markdown de bloque.
-"""
-
-
 def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
+    prompt_instrucciones = """
+    Sos un experto en logística de transporte y remitos de carga.
+    Analizá detalladamente este comprobante y extraé los datos en un JSON estricto con las siguientes claves:
+
+    {
+      "remitente": {
+        "razon_social": str o null,
+        "cuit": str o null,
+        "domicilio": str o null,
+        "localidad": str o null,
+        "provincia": str o null
+      },
+      "destinatario": {
+        "razon_social": str o null,
+        "cuit": str o null,
+        "domicilio": str o null,
+        "localidad": str o null,
+        "provincia": str o null
+      },
+      "comprobante": {
+        "tipo": str o null,
+        "numero": str o null,
+        "fecha": str o null,
+        "valor_declarado": float o null
+      },
+      "flete": {
+        "condicion_pago": str ("ORIGEN" o "DESTINO" o null),
+        "contrarreembolso": bool,
+        "monto_contrarreembolso": float o null
+      },
+      "carga": {
+        "cantidad_bultos": int o null,
+        "peso_kg": float o null,
+        "volumen_m3": float o null
+      },
+      "observaciones": str o null
+    }
+
+    Reglas:
+    - Flete en destino o por cobrar -> condicion_pago = "DESTINO". Si está abonado/origen -> "ORIGEN".
+    - Si figura contra reembolso o C/R -> contrarreembolso = true y poner el monto numérico en monto_contrarreembolso.
+    - Responder ÚNICAMENTE el JSON crudo, sin etiquetas markdown de bloque.
+    """
+
     part_archivo = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
-    part_texto = types.Part.from_text(text=PROMPT_REMITO)
+    part_texto = types.Part.from_text(text=prompt_instrucciones)
     contenido = types.Content(role="user", parts=[part_archivo, part_texto])
 
     config = types.GenerateContentConfig(
-        response_mime_type="application/json"
+        response_mime_type="application/json",
+        temperature=0.1
     )
 
+    modelos = ["gemini-2.5-flash", "gemini-3.6-flash"]
     ultimo_error = None
 
-    # 1. Intento con Gemini 3.6 Flash
-    for intento in range(3):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=[contenido],
-                config=config
-            )
-            return json.loads(response.text.strip())
-        except Exception as e:
-            ultimo_error = str(e)
-            if any(err in ultimo_error for err in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
-                time.sleep(3 * (intento + 1))
-                continue
-            break
-
-    # 2. Respaldo inmediato en Groq Vision limitando tokens para evitar error 429
-    if groq_client and mime_type.startswith("image/"):
-        try:
-            b64_img = base64.b64encode(file_bytes).decode("utf-8")
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": PROMPT_REMITO},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{b64_img}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                model="qwen/qwen3.8-27b",
-                max_tokens=800,
-                response_format={"type": "json_object"}
-            )
-            return json.loads(chat_completion.choices[0].message.content.strip())
-        except Exception as eg:
-            ultimo_error = f"Gemini: {ultimo_error} | Groq: {str(eg)}"
+    for modelo in modelos:
+        for intento in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=modelo,
+                    contents=[contenido],
+                    config=config
+                )
+                return json.loads(response.text.strip())
+            except Exception as e:
+                ultimo_error = str(e)
+                if "503" in ultimo_error or "UNAVAILABLE" in ultimo_error:
+                    time.sleep(1.5)
+                    continue
+                else:
+                    break
 
     raise HTTPException(
         status_code=500,
