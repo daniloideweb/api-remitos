@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
-# Cliente condicional de Groq para respaldo automático
+# Cliente condicional de Groq para respaldo
 groq_client = None
 if os.getenv("GROQ_API_KEY"):
     from groq import Groq
@@ -19,7 +19,7 @@ if os.getenv("GROQ_API_KEY"):
 app = FastAPI(
     title="API Extracción de Remitos",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.1.0"
+    version="2.2.0"
 )
 
 app.add_middleware(
@@ -37,7 +37,7 @@ class RemitoRequest(BaseModel):
 
 
 def obtener_id_drive(url: str) -> str:
-    """Extrae el ID del archivo de cualquier formato de enlace de Drive."""
+    """Extrae el ID del archivo de cualquier enlace de Google Drive."""
     match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
     if match:
         return match.group(1)
@@ -139,8 +139,8 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
 
     ultimo_error = None
 
-    # 1. Intento inicial con Gemini 3.6 Flash
-    for intento in range(2):
+    # 1. Intento con Gemini 3.6 Flash
+    for intento in range(3):
         try:
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
@@ -151,38 +151,36 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         except Exception as e:
             ultimo_error = str(e)
             if any(err in ultimo_error for err in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
-                time.sleep(2)
+                time.sleep(3 * (intento + 1))
                 continue
             break
 
-    # 2. Respaldo transparente en Groq Vision si Google tiene cola/saturación
+    # 2. Respaldo inmediato en Groq Vision limitando tokens para evitar error 429
     if groq_client and mime_type.startswith("image/"):
-        modelos_groq = ["qwen/qwen3.8-27b", "meta-llama/llama-4-scenic"]
-        for mod_g in modelos_groq:
-            try:
-                b64_img = base64.b64encode(file_bytes).decode("utf-8")
-                chat_completion = groq_client.chat.completions.create(
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": PROMPT_REMITO},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{mime_type};base64,{b64_img}"
-                                    }
+        try:
+            b64_img = base64.b64encode(file_bytes).decode("utf-8")
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": PROMPT_REMITO},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{b64_img}"
                                 }
-                            ]
-                        }
-                    ],
-                    model=mod_g,
-                    response_format={"type": "json_object"}
-                )
-                return json.loads(chat_completion.choices[0].message.content.strip())
-            except Exception as eg:
-                ultimo_error = f"Gemini: {ultimo_error} | Groq ({mod_g}): {str(eg)}"
-                continue
+                            }
+                        ]
+                    }
+                ],
+                model="qwen/qwen3.8-27b",
+                max_tokens=800,
+                response_format={"type": "json_object"}
+            )
+            return json.loads(chat_completion.choices[0].message.content.strip())
+        except Exception as eg:
+            ultimo_error = f"Gemini: {ultimo_error} | Groq: {str(eg)}"
 
     raise HTTPException(
         status_code=500,
