@@ -1,82 +1,3 @@
-import os
-import re
-import json
-import time
-import requests
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from google import genai
-from google.genai import types
-
-app = FastAPI(
-    title="API Extracción de Remitos",
-    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="1.7.0"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Inicializa cliente de Gemini utilizando la variable GEMINI_API_KEY
-client = genai.Client()
-
-class RemitoRequest(BaseModel):
-    archivo_url: str = Field(..., description="URL de Google Drive del remito")
-
-
-def obtener_id_drive(url: str) -> str:
-    """Extrae el ID del archivo de cualquier enlace de Google Drive."""
-    match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
-    if match:
-        return match.group(1)
-    match = re.search(r"id=([a-zA-Z0-9_-]+)", url)
-    if match:
-        return match.group(1)
-    return url
-
-
-def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
-    """Descarga el binario real omitiendo previsualizaciones HTML y optimizando a 1600px."""
-    file_id = obtener_id_drive(url)
-    session = requests.Session()
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
-
-    alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
-    res = session.get(alt_url, headers=headers, timeout=25)
-
-    if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
-        download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
-        res = session.get(download_url, headers=headers, timeout=25)
-        if "confirm=" in res.text:
-            token = re.search(r"confirm=([0-9A-Za-z_]+)", res.text)
-            if token:
-                res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=25)
-
-    if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
-        raise HTTPException(
-            status_code=400,
-            detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso en 'Cualquier persona con el enlace'."
-        )
-
-    content_type = res.headers.get("Content-Type", "").lower()
-    if res.content.startswith(b"%PDF") or "pdf" in content_type:
-        mime_type = "application/pdf"
-    elif res.content.startswith(b"\x89PNG") or "png" in content_type:
-        mime_type = "image/png"
-    else:
-        mime_type = "image/jpeg"
-
-    return res.content, mime_type
-
-
 def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     prompt_instrucciones = """
     Sos un experto en logística de transporte y remitos de carga.
@@ -131,18 +52,16 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         temperature=0.1
     )
 
-    # Lista con orden de prioridad: si uno tiene pico de demanda 503, salta al siguiente
+    # Modelos activos confirmados por los logs de Google
     candidatos_modelos = [
-        "gemini-2.5-flash",
         "gemini-3.6-flash",
-        "gemini-1.5-pro",
-        "gemini-2.5-pro"
+        "gemini-3.1-pro-preview"
     ]
 
     ultimo_error = None
 
     for modelo in candidatos_modelos:
-        for intento in range(2):
+        for intento in range(3):
             try:
                 response = client.models.generate_content(
                     model=modelo,
@@ -152,35 +71,14 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 return json.loads(response.text.strip())
             except Exception as e:
                 ultimo_error = str(e)
-                # Si el modelo no existe (404), salta inmediatamente al siguiente candidato
-                if "404" in ultimo_error or "NOT_FOUND" in ultimo_error:
-                    break
-                # Si está saturado (503 / 429), espera brevemente antes de reintentar
+                # Si el modelo está ocupado (503/429), pausa progresiva de 3s y 6s
                 if any(err in ultimo_error for err in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
-                    time.sleep(2)
+                    time.sleep(3 * (intento + 1))
                     continue
+                # Si es otro error (por ejemplo 404), pasa de inmediato al siguiente modelo
                 break
 
     raise HTTPException(
         status_code=500,
         detail=f"Error en el procesamiento de visión/IA: {ultimo_error}"
     )
-
-
-@app.get("/")
-def home():
-    return {"status": "online", "service": "API Remitos Raosa"}
-
-
-@app.get("/procesar-remito")
-@app.get("/procesar-remito/")
-def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive del remito")):
-    file_bytes, mime_type = descargar_archivo_drive(archivo_url)
-    return procesar_con_gemini(file_bytes, mime_type)
-
-
-@app.post("/procesar-remito")
-@app.post("/procesar-remito/")
-def procesar_remito_post(payload: RemitoRequest):
-    file_bytes, mime_type = descargar_archivo_drive(payload.archivo_url)
-    return procesar_con_gemini(file_bytes, mime_type)
