@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.7.0"
+    version="2.8.0"
 )
 
 app.add_middleware(
@@ -25,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inicializa cliente de Gemini con la variable de entorno GEMINI_API_KEY
 client = genai.Client()
 
 class RemitoRequest(BaseModel):
@@ -33,7 +32,6 @@ class RemitoRequest(BaseModel):
 
 
 def obtener_id_drive(url: str) -> str:
-    """Extrae el ID del archivo de cualquier formato de enlace de Google Drive."""
     match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
     if match:
         return match.group(1)
@@ -44,7 +42,6 @@ def obtener_id_drive(url: str) -> str:
 
 
 def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
-    """Corrige la orientación física y metadatos EXIF de la imagen."""
     if not mime_type.startswith("image/"):
         return file_bytes, mime_type
     try:
@@ -60,7 +57,6 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
 
 
 def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
-    """Descarga el archivo real omitiendo previsualizaciones intermedias."""
     file_id = obtener_id_drive(url)
     session = requests.Session()
     headers = {
@@ -105,9 +101,12 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
     - Remitente y Destinatario: Extrae razón social, domicilio, localidad, provincia, teléfono y correo electrónico ('email') si figura.
-    - CUIT / DNI: El campo 'cuit' debe extraerse estrictamente SIN guiones ni separadores. Si es una empresa u organismo, contendrá 11 dígitos juntos (ej: 30500810874); si es un particular y solo figura DNI, contendrá los 8 dígitos juntos.
-    - Comprobante: Extrae el número de remito ('nro') unificado estrictamente en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para el número, rellenando con ceros a la izquierda si hace falta, ej: 000100047496) y el valor declarado ('val_decl').
-    - Flete: Determina la condición de pago ('cond_pago') la cual debe ser obligatoriamente 'ORIGEN' (si paga el remitente) o 'DESTINO' (si paga el destinatario).
+    - CUIT / DNI: El campo 'cuit' debe extraerse estrictamente SIN guiones ni separadores. Si es una empresa u organismo, 11 dígitos juntos; si es un particular (DNI), 8 dígitos juntos.
+    - Comprobante: Extrae el número de remito ('nro') unificado estrictamente en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para el número, ej: 000300000587) y el valor declarado ('val_decl').
+    - Flete:
+      * 'cond_pago': Coloca 'ORIGEN' (paga remitente/pagado) o 'DESTINO' (paga destinatario/a cobrar) ÚNICAMENTE si está explícitamente indicado en el comprobante, impreso, en sellos o etiquetas. Si no figura ninguna mención o indicación, coloca null.
+      * 'cr': true si el remito indica cobro contra reembolso (o C/R), de lo contrario false.
+      * 'monto_cr': Monto numérico si hay contra reembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
 
     Estructura JSON estricta requerida:
@@ -135,7 +134,9 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "val_decl": float o null
       },
       "flete": {
-        "cond_pago": "ORIGEN" o "DESTINO"
+        "cond_pago": str o null,
+        "cr": bool,
+        "monto_cr": float o null
       }
     }
 
