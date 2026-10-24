@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.5.0"
+    version="2.6.0"
 )
 
 app.add_middleware(
@@ -101,13 +101,13 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     Sos un experto liquidador y auditor documental de empresas de transporte de cargas y encomiendas.
 
     INSTRUCCIÓN DE LECTURA Y ORIENTACIÓN:
-    La imagen puede estar invertida (de cabeza), rotada o inclinada. Antes de extraer los datos, determina la orientación correcta del comprobante.
+    La imagen puede estar invertida o rotada. Determina la orientación correcta antes de extraer los datos.
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
-    - Extrae con total precisión la información del remitente, destinatario, comprobante y flete.
-    - Incluye las direcciones de correo electrónico tanto de remitente ('email') como de destinatario ('email') si figuran en el documento.
-    - El número del comprobante ('nro') debe unirse estrictamente en un solo bloque continuo de 12 dígitos sin guiones (4 dígitos para punto de venta y 8 para el número, rellenando con ceros a la izquierda si es necesario, por ejemplo: 000100047496).
-    - EXCLUYE completamente: fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
+    - Remitente y Destinatario: Extrae razón social, CUIT, domicilio, localidad, provincia, teléfono y correo electrónico ('email') si figura.
+    - Comprobante: Extrae el número de remito ('nro') unificado estrictamente en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para el número, rellenando con ceros a la izquierda si hace falta, ej: 000100047496) y el valor declarado ('val_decl').
+    - Flete: Determina la condición de pago ('cond_pago') la cual debe ser obligatoriamente 'ORIGEN' (si paga el remitente) o 'DESTINO' (si paga el destinatario).
+    - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
 
     Estructura JSON estricta requerida:
     {
@@ -130,14 +130,11 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "email": str o null
       },
       "comprob": {
-        "tipo": str o null,
         "nro": str o null,
         "val_decl": float o null
       },
       "flete": {
-        "cond_pago": str o null,
-        "cr": bool,
-        "monto_cr": float o null
+        "cond_pago": "ORIGEN" o "DESTINO"
       }
     }
 
