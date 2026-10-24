@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.9.0"
+    version="2.10.0"
 )
 
 app.add_middleware(
@@ -27,7 +27,6 @@ app.add_middleware(
 
 client = genai.Client()
 
-# Listado oficial de localidades de Transporte Raosa s.r.l.
 LISTADO_LOCALIDADES = """
 00001 CORRIENTES CAPITAL - Corrientes
 00002 GOYA - Corrientes
@@ -727,4 +726,16 @@ LISTADO_LOCALIDADES = """
 00698 AYACUCHO - Cordoba
 00699 VILLA AZALAIS - Cordoba
 00700 PATRICIO PALMERO - Cordoba
-0
+00701 GENERAL BUSTOS - Cordoba
+00702 LEANDRO N ALEM - Cordoba
+00703 NUEVA ITALIA - Cordoba
+00704 ELIAS YOFRE - Cordoba
+00705 VALLE ESCONDIDO - Cordoba
+00706 QUEBRADA LAS ROSAS - Cordoba
+00707 DON BOSCO - Cordoba
+00708 JUSTO JOSE URQUIZA - Cordoba
+00709 BARRIO CENTRO - Cordoba
+00710 MICROCENTRO - Cordoba
+00711 RESIDENCIAL SAN ROQUE - Cordoba
+00712 SANTA ANA - Cordoba
+00713
