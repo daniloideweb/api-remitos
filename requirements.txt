@@ -1,6 +1,6 @@
-fastapi
-uvicorn
-requests
-pydantic
-google-genai
-pillow
+fastapi==0.110.0
+uvicorn==0.28.0
+requests==2.31.0
+pydantic==2.6.4
+google-genai==0.3.0
+pillow==10.2.0
