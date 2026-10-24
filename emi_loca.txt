@@ -1,743 +1,735 @@
-
-
-
-                                        Listado de Localidades
-  De Transporte RAOSA s.r.l.
-  Usuario: DANILO
-                                                                                   24/10/26  09:11:41
- Codigo     Descripcion                                  Provincia
- 00001      CORRIENTES CAPITAL                           Corrientes
- 00002      GOYA                                         Corrientes
- 00003      LAVALLE                                      Corrientes
- 00004      SANTA LUCIA                                  Corrientes
- 00005      BELLA VISTA  CTES..                          Corrientes
- 00006      SALADAS                                      Corrientes
- 00007      TATACUA                                      Corrientes
- 00008      CAA CATI                                     Corrientes
- 00009      EMPEDRADO                                    Corrientes
- 00010      ENTREGA / RETIRA DE DEPOSITO                 Corrientes
- 00011      ITATI                                        Corrientes
- 00012      ITUZAINGO- CORRIENTES                        Corrientes
- 00013      PASO DE LA PATRIA                            Corrientes
- 00014      SAN LUIS DEL PALMAR                          Corrientes
- 00015      SAN COSME                                    Corrientes
- 00016      GOBERNADOR VIRASORO                          Corrientes
- 00017      COLONIA LIEBIG S                             Corrientes
- 00018      SANTA ROSA  CORRIENTES                       Corrientes
- 00019      PASO DE LOS LIBRES                           Corrientes
- 00020      CURUZU CUATIA                                Corrientes
- 00021      MERCEDES CORRIENTES                          Corrientes
- 00022      MONTE CASEROS                                Corrientes
- 00023      RESISTENCIA                                  Chaco
- 00024      BARRANQUERAS                                 Chaco
- 00025      PUERTO TIROL                                 Chaco
- 00026      LA VERDE                                     Chaco
- 00027      LA ESCONDIDA                                 Chaco
- 00028      PRESIDENCIA LA PLAZA                         Chaco
- 00029      MACHAGAI                                     Chaco
- 00030      QUITILIPI                                    Chaco
- 00031      ROQUE SAENZ PE A                             Chaco
- 00032      CORZUELA                                     Chaco
- 00033      CAMPO LARGO                                  Chaco
- 00034      CHARATA                                      Chaco
- 00035      SAN BERNARDO                                 Chaco
- 00036      VILLA ANGELA                                 Chaco
- 00037      TRES ARROYOS                                 Buenos Aires
- 00038      TRES ISLETAS                                 Chaco
- 00039      JUAN JOSE CASTELLI                           Chaco
- 00040      GENERAL SAN MARTIN  CHACO                    Chaco
- 00041      LA LEONESA                                   Chaco
- 00042      BASAIL                                       Chaco
- 00043      GENERAL MANSILLA                             Formosa
- 00044      VILLA ESCOLAR                                Formosa
- 00045      PIRANE                                       Formosa
- 00046      PALO SANTO                                   Formosa
- 00047      COMANDANTE FONTANA                           Formosa
- 00048      IBARRETA                                     Formosa
- 00049      LAS LOMITAS                                  Formosa
- 00050      EL COLORADO  FSA.                            Formosa
- 00051      VILLA 213                                    Formosa
- 00052      ESTANISLAO DEL CAMPO                         Formosa
- 00053      CLORINDA                                     Formosa
- 00054      LAGUNA BLANCA                                Formosa
- 00055      EL ESPINILLO                                 Formosa
- 00056      RIACHO HE-HE                                 Formosa
- 00057      OBERA                                        Misiones
- 00058      SANTA ANA (MISIONES)                         Misiones
- 00059      SAN IGNACIO                                  Misiones
- 00060      LEANDRO N.ALEM                               Misiones
- 00061      GOBERNADOR ROCA                              Misiones
- 00062      ARISTOBULO DEL VALLE  MNES.                  Misiones
- 00063      JARDIN DE AMERICA                            Misiones
- 00064      CAPIOVI                                      Misiones
- 00065      APOSTOLES                                    Misiones
- 00066      SANTO PIPO                                   Misiones
- 00067      CANDELARIA                                   Misiones
- 00068      PUERTO RICO                                  Misiones
- 00069      CERRO AZUL                                   Misiones
- 00070      EL DORADO                                    Misiones
- 00071      PUERTO ESPERANZA                             Misiones
- 00072      WANDA                                        Misiones
- 00073      PUERTO IGUAZU                                Misiones
- 00074      9 DE JULIO  CTES.                            Corrientes
- 00075      COLONIA TABAY                                Corrientes
- 00076      BELLA VISTA                                  Cordoba
- 00077      FELIPE YOFRE                                 Corrientes
- 00078      ITA IBATE                                    Corrientes
- 00079      MANTILLA                                     Corrientes
- 00080      MBURUCUYA                                    Corrientes
- 00081      PERUGORRIA                                   Corrientes
- 00082      RIACHUELO                                    Corrientes
- 00083      SAN ROQUE                                    Corrientes
- 00084      BIALET MASSE                                 Cordoba
- 00085      SANTO TOME- CORRIENTES-                      Corrientes
- 00086      AVIA TERAI                                   Chaco
- 00087      COLONIA BENITEZ                              Chaco
- 00088      COLONIA ELISA                                Chaco
- 00089      CONCEPCION DEL BERMEJO                       Chaco
- 00090      CORONEL DU GRATY                             Chaco
- 00091      FONTANA                                      Chaco
- 00092      GANCEDO                                      Chaco
- 00093      LA CLOTILDE                                  Chaco
- 00094      LA TIGRA                                     Chaco
- 00095      LAS BRE AS                                   Chaco
- 00096      CERVECEROS                                   Cordoba
- 00097      MAKALLE                                      Chaco
- 00098      MARGARITA BELEN                              Chaco
- 00099      PAMPA DEL INFIERNO                           Chaco
- 00100      GENERAL PINEDO                               Chaco
- 00101      SANTA SYLVINA                                Chaco
- 00102      VILLA BERTHET                                Chaco
- 00103      FORMOSA                                      Formosa
- 00104      GENERAL BELGRANO MANUEL FORMOSA              Formosa
- 00105      LAGUNA NAICK-NECK                            Formosa
- 00106      COLON                                        Cordoba
- 00107      POZO DEL TIGRE                               Formosa
- 00108      TACAAGLE                                     Formosa
- 00109      POSADAS                                      Misiones
- 00110      CAPITAL FEDERAL                              Capital Federal
- 00111      GARIN                                        Buenos Aires
- 00112      QUILMES                                      Buenos Aires
- 00113      FLORENCIO VARELA                             Buenos Aires
- 00114      SAN MARTIN  BS AS                            Buenos Aires
- 00115      AVELLANEDA  BS A S.                          Buenos Aires
- 00116      FLORIDA                                      Buenos Aires
- 00117      VIRREYES                                     Buenos Aires
- 00118      MORON                                        Buenos Aires
- 00119      DOCK SUD                                     Buenos Aires
- 00120      SAN MIGUEL  BS. AS                           Buenos Aires
- 00121      LOMAS DE ZAMORA                              Buenos Aires
- 00122      ALVAREZ FRANCISCO                            Buenos Aires
- 00123      ALDO BONZI                                   Buenos Aires
- 00124      ISIDRO CASANOVA                              Buenos Aires
- 00125      CASEROS                                      Capital Federal
- 00126      CASTELAR                                     Buenos Aires
- 00127      CASTILLO RAFAEL                              Buenos Aires
- 00128      CIUDADELA                                    Buenos Aires
- 00129      CIUDAD EVITA                                 Buenos Aires
- 00130      EL PALOMAR                                   Buenos Aires
- 00131      GREGORIO DE LAFERRERE                        Buenos Aires
- 00132      GONZALEZ CATAN                               Buenos Aires
- 00133      HAEDO                                        Buenos Aires
- 00134      HURLINGHAM                                   Buenos Aires
- 00135      JOSE INGENIEROS                              Buenos Aires
- 00136      ITUZAINGO                                    Buenos Aires
- 00137      LA REJA                                      Buenos Aires
- 00138      LIBERTAD                                     Buenos Aires
- 00139      LOMAS DEL MIRADOR                            Buenos Aires
- 00140      LOMA HERMOSA                                 Buenos Aires
- 00141      MARIANO ACOSTA                               Buenos Aires
- 00142      MARTIN CORONADO                              Buenos Aires
- 00143      MERLO                                        Buenos Aires
- 00144      MORENO                                       Buenos Aires
- 00145      PASO DEL REY                                 Buenos Aires
- 00146      PONTEVEDRA                                   Buenos Aires
- 00147      RAFAEL CASTILLO                              Buenos Aires
- 00148      RAMOS MEJIA                                  Buenos Aires
- 00149      GENERAL RODRIGUEZ                            Buenos Aires
- 00150      SAENZ PE A                                   Buenos Aires
- 00151      SAN ANTONIO DE PADUA                         Buenos Aires
- 00152      SAN JUSTO                                    Buenos Aires
- 00153      SANTOS LUGARES                               Buenos Aires
- 00154      TABLADA                                      Buenos Aires
- 00155      TAPIALES                                     Buenos Aires
- 00156      VILLA BOSCH                                  Buenos Aires
- 00157      VILLA MADERO                                 Buenos Aires
- 00158      VILLA LUZURIAGA                              Buenos Aires
- 00159      VILLA RAFO                                   Buenos Aires
- 00160      VILLA SARMIENTO                              Buenos Aires
- 00161      ACASSUSO                                     Buenos Aires
- 00162      BANCALARI                                    Buenos Aires
- 00163      BECCAR                                       Buenos Aires
- 00164      BELLA VISTA  BS AS                           Buenos Aires
- 00165      BENAVIDEZ                                    Buenos Aires
- 00166      BOULOGNE SUR MER                             Buenos Aires
- 00167      CAMPO DE MAYO                                Buenos Aires
- 00168      CARAPACHAY                                   Buenos Aires
- 00169      CHILAVERT                                    Buenos Aires
- 00170      ARISTOBULO DEL VALLE  BS AS                  Buenos Aires
- 00171      DEL VISO                                     Buenos Aires
- 00172      DERQUI  BS AS                                Buenos Aires
- 00173      DON TORCUATO                                 Buenos Aires
- 00174      EL TALAR                                     Buenos Aires
- 00175      GENERAL BOURG                                Buenos Aires
- 00176      JOSE C. PAZ                                  Buenos Aires
- 00177      JOSE LEON SUAREZ                             Buenos Aires
- 00178      LA LUCILA                                    Buenos Aires
- 00179      LOS POLVORINES                               Buenos Aires
- 00180      MALAVER                                      Buenos Aires
- 00181      MARTINEZ                                     Buenos Aires
- 00182      INGENIERO MASCHWITZ                          Buenos Aires
- 00183      MU IZ                                        Buenos Aires
- 00184      MUNRO                                        Buenos Aires
- 00185      PABLO NOGUES                                 Buenos Aires
- 00186      OLIVOS                                       Buenos Aires
- 00187      GENERAL PACHECO                              Buenos Aires
- 00188      PILAR                                        Buenos Aires
- 00189      PABLO PODESTA                                Buenos Aires
- 00190      SAN ANDRES                                   Buenos Aires
- 00191      SAN FERNANDO                                 Buenos Aires
- 00192      SAN ISIDRO                                   Buenos Aires
- 00193      ADOLFO SORDEAUX                              Buenos Aires
- 00194      TIGRE                                        Buenos Aires
- 00195      VICENTE LOPEZ                                Buenos Aires
- 00196      VICTORIA                                     Buenos Aires
- 00197      VILLA ADELINA                                Buenos Aires
- 00198      VILLA BALLESTER                              Buenos Aires
- 00199      VILLA DE MAYO                                Buenos Aires
- 00200      VILLA LYNCH                                  Buenos Aires
- 00201      VILLA MARTELLI                               Buenos Aires
- 00202      WILLIAMS C.MORRIS                            Buenos Aires
- 00203      ADROGUE                                      Buenos Aires
- 00204      ALMIRANTE BROWN EZPELETA                     Buenos Aires
- 00205      VALENTIN ALSINA                              Buenos Aires
- 00206      BANFIELD                                     Buenos Aires
- 00207      BERAZATEGUI                                  Buenos Aires
- 00208      BERISSO                                      Buenos Aires
- 00209      BERNAL                                       Buenos Aires
- 00210      BOSQUES                                      Buenos Aires
- 00211      BURZACO                                      Buenos Aires
- 00212      CANNING                                      Buenos Aires
- 00213      RAFAEL CALZADA                               Buenos Aires
- 00214      CARAZA                                       Buenos Aires
- 00215      CITY BELL                                    Buenos Aires
- 00216      CLAYPOLE                                     Buenos Aires
- 00217      DON BOSCO                                    Buenos Aires
- 00218      EL JAGUEL                                    Buenos Aires
- 00219      ENSENADA                                     Buenos Aires
- 00220      EZEIZA                                       Buenos Aires
- 00221      EZPELETA                                     Buenos Aires
- 00222      VILLA FIORITO                                Buenos Aires
- 00223      GERLI                                        Buenos Aires
- 00224      GLEW                                         Buenos Aires
- 00225      GONNET                                       Buenos Aires
- 00226      GUERNICA                                     Buenos Aires
- 00227      JOSE MARMOL                                  Buenos Aires
- 00228      ALEJANDRO KORN                               Buenos Aires
- 00229      LANUS                                        Buenos Aires
- 00230      LONGCHAMPS                                   Buenos Aires
- 00231      LLAVALLOL                                    Buenos Aires
- 00232      LUIS GUILLON                                 Buenos Aires
- 00233      MALVINAS ARGENTINAS                          Buenos Aires
- 00234      MONTE CHINGOLO                               Buenos Aires
- 00235      MONTE GRANDE                                 Buenos Aires
- 00236      PI EYRO                                      Buenos Aires
- 00237      PUNTA LARA                                   Buenos Aires
- 00238      PLATANOS                                     Buenos Aires
- 00239      VILLA GRAL BELGRANO                          Cordoba
- 00240      RANELAGH                                     Buenos Aires
- 00241      REMEDIOS DE ESCALADA                         Buenos Aires
- 00242      SAN FRANCISCO SOLANO                         Buenos Aires
- 00243      SAN VICENTE                                  Buenos Aires
- 00244      SARANDI                                      Buenos Aires
- 00245      TEMPERLEY                                    Buenos Aires
- 00246      TRISTAN SUAREZ                               Buenos Aires
- 00247      TURDECA                                      Buenos Aires
- 00248      VILLA DOMINICO                               Buenos Aires
- 00249      VILLA ELISA                                  Buenos Aires
- 00250      WILDE                                        Buenos Aires
- 00251      ROSARIO                                      Santa Fe
- 00252      SAN FRANCISCO                                Cordoba
- 00253      SANTO TOME                                   Santa Fe
- 00254      CORDOBA                                      Cordoba
- 00255      RECONQUISTA                                  Santa Fe
- 00256      CHILECITO                                    La Rioja
- 00257      MIRAFLORES                                   Chaco
- 00258      CA ADA DE GOMEZ                              Santa Fe
- 00259      GENERAL LAGOS                                Santa Fe
- 00260      LORETO  STAGO  DEL ESTERO                    Sgo del Estero
- 00261      RAFAELA                                      Santa Fe
- 00262      CRESPO                                       Entre Rios
- 00263      SANTA FE                                     Santa Fe
- 00264      LAS TOSCAS                                   Santa Fe
- 00265      PANAMBI                                      Misiones
- 00266      LA FERRERE                                   Buenos Aires
- 00267      FLORENCIA                                    Santa Fe
- 00268      MONTE CRISTO                                 Cordoba
- 00269      VILLA MARIA                                  Cordoba
- 00270      VILLA ALLENDE                                Cordoba
- 00271      GOBERNADOR GALVEZ                            Santa Fe
- 00272      SASTRE                                       Santa Fe
- 00273      SAN PEDRO                                    Misiones
- 00274      CONCORDIA                                    Entre Rios
- 00275      SAN CARLOS CENTRO                            Santa Fe
- 00276      ESTEBAN ECHEVERRIA                           Buenos Aires
- 00277      COLONIA VICTORIA                             Misiones
- 00278      COLONIA TIROLESA                             Cordoba
- 00279      SANTA ANA                                    Corrientes
- 00280      VILLA OCAMPO                                 Santa Fe
- 00281      AVELLANEDA                                   Santa Fe
- 00282      CHAVARRIA                                    Corrientes
- 00283      MATADEROS                                    Capital Federal
- 00284      HERMOSO CAMPO                                Chaco
- 00285      ACEBAL                                       Santa Fe
- 00286      9 DE JULIO  MNES.                            Misiones
- 00287      INGENIERO JUAREZ                             Formosa
- 00288      VIRREY DEL PINO                              Buenos Aires
- 00289      LAS HERAS                                    Mendoza
- 00290      TORTUGUITAS                                  Buenos Aires
- 00291      FUNES                                        Santa Fe
- 00292      PERGAMINO                                    Buenos Aires
- 00293      BALLESTEROS                                  Cordoba
- 00294      SAN VICENTE                                  Misiones
- 00295      EL SOMBRERO                                  Corrientes
- 00296      LA PLATA                                     Buenos Aires
- 00297      TALAR DE PACHECO                             Buenos Aires
- 00298      PAVON ARRIBA                                 Santa Fe
- 00299      HUMBOLDT                                     Santa Fe
- 00300      ESCOBAR                                      Buenos Aires
- 00301      SALADILLO                                    Buenos Aires
- 00302      MENDOZA                                      Mendoza
- 00303      CAMINO ALDAO                                 Cordoba
- 00304      BELL VILLE                                   Cordoba
- 00305      CAMPO VIERA                                  Misiones
- 00306      MONTECARLO                                   Misiones
- 00307      COLAZO                                       Cordoba
- 00308      TORTUGAS                                     Santa Fe
- 00309      PUERTO VILELA                                Chaco
- 00310      FERREYRA                                     Cordoba
- 00311      LUJAN                                        Buenos Aires
- 00312      VILLA RETIRO                                 Cordoba
- 00313      ALTA GRACIA                                  Cordoba
- 00314      SAN JAVIER                                   Misiones
- 00315      LA RIOJA                                     La Rioja
- 00316      LA FALDA                                     Cordoba
- 00317      MANANTIALES                                  Tucuman
- 00318      SANTA ROSA -MENDOZA-                         Mendoza
- 00319      CASILDA                                      Santa Fe
- 00320      CHACABUCO                                    Buenos Aires
- 00321      FATIMA                                       Buenos Aires
- 00322      BARADERO                                     Capital Federal
- 00323      LA TABLADA                                   Buenos Aires
- 00324      DEVOTO                                       Cordoba
- 00325      PARANA                                       Entre Rios
- 00326      SAUCE VIEJO                                  Santa Fe
- 00327      PAMPA DEL INDIO                              Chaco
- 00328      DOS DE MAYO                                  Misiones
- 00329      VILLA GUILLERMINA                            Santa Fe
- 00330      LA TOMA                                      San Luis
- 00331      CERRITO                                      Entre Rios
- 00332      CAMPO GRANDE                                 Misiones
- 00333      9 DE JULIO  BS AS                            Buenos Aires
- 00334      SPEGAZZINI C                                 Buenos Aires
- 00335      ESPERANZA                                    Santa Fe
- 00336      GALVEZ                                       Santa Fe
- 00337      ESQUINA                                      Corrientes
- 00338      CUATRO BOCAS                                 Corrientes
- 00339      LORETO                                       Corrientes
- 00340      BRAGADO                                      Buenos Aires
- 00341      FRONTERA                                     Santa Fe
- 00342      SAN JORGE                                    Santa Fe
- 00343      SAN MIGUEL DE TUCUMAN                        Tucuman
- 00344      VILLA CELINA                                 Buenos Aires
- 00345      RUIZ DE MONTOYA                              Misiones
- 00346      ARGUELLO                                     Cordoba
- 00347      CALCHIN                                      Cordoba
- 00348      SALTO GRANDE                                 Santa Fe
- 00349      MARCOS PAZ                                   Buenos Aires
- 00350      VILLA CORINA                                 Cordoba
- 00351      DIAMANTE                                     Entre Rios
- 00352      SAN LORENZO                                  Santa Fe
- 00353      LINCOLN                                      Buenos Aires
- 00354      ARROYITO                                     Cordoba
- 00355      RIO CEBALLOS                                 Cordoba
- 00356      ROLDAN                                       Santa Fe
- 00357      BERON DE  ASTRADA                            Corrientes
- 00358      VENADO TUERTO                                Santa Fe
- 00359      VILLA ZAGALA                                 Buenos Aires
- 00360      JUNIN                                        Buenos Aires
- 00361      MAGDALENA                                    Buenos Aires
- 00362      ZARATE                                       Buenos Aires
- 00363      PALOMAR                                      Buenos Aires
- 00364      VILLA INSAURRALDE                            Buenos Aires
- 00365      GARUHAPE                                     Misiones
- 00366      SAN MIGUEL                                   Corrientes
- 00367      ARTEAGA                                      Santa Fe
- 00368      VILLA ELISA                                  Entre Rios
- 00369      MACIEL                                       Santa Fe
- 00370      ALVEAR ( SANTA FE)                           Santa Fe
- 00371      FIRMAT                                       Santa Fe
- 00372      ARMSTRONG                                    Santa Fe
- 00373      GARUPA                                       Misiones
- 00374      SAN FERNANDO DEL VALLE                       Catamarca
- 00375      SAN CRISTOBAL  STA FE                        Santa Fe
- 00376      AREQUITO                                     Santa Fe
- 00377      LAS PAREJAS                                  Santa Fe
- 00378      MAR DEL PLATA                                Buenos Aires
- 00379      SALTA                                        Salta
- 00380      SAN RAFAEL                                   Mendoza
- 00381      SAN JOSE DE LA ESQUINA                       Santa Fe
- 00382      CAPITAN BERMUDEZ                             Santa Fe
- 00383      CORREA                                       Santa Fe
- 00384      LAS VARILLAS                                 Cordoba
- 00385      RIO SEGUNDO                                  Cordoba
- 00386      ALDEA MARIA LUISA                            Entre Rios
- 00387      PUEBLO MU OZ                                 Santa Fe
- 00388      GOBERNADOR JUAN E.MARTINEZ                   Corrientes
- 00389      VILLA INSUPERABLE                            Buenos Aires
- 00390      SOLDINI                                      Santa Fe
- 00391      RIO CUARTO                                   Cordoba
- 00392      CAMPANA                                      Buenos Aires
- 00393      PUERTO MADERO                                Capital Federal
- 00394      VILLA ALSINA                                 Buenos Aires
- 00395      RECREO  CATAMARCA                            Catamarca
- 00396      GENERAL VEDIA                                Chaco
- 00397      DEVOTO                                       Buenos Aires
- 00398      PRESIDENCIA ROCA                             Chaco
- 00399      ARROYO SECO                                  Santa Fe
- 00400      PEREZ                                        Santa Fe
- 00401      CONCEPCION DEL URUGUAY                       Entre Rios
- 00402      JESUS MARIA                                  Cordoba
- 00403      VILLA OLIVARI                                Corrientes
- 00404      PALMA SOLA                                   Formosa
- 00405      CA UELAS                                     Buenos Aires
- 00406      LUQUE                                        Cordoba
- 00407      COLONIA PROGRESO                             Corrientes
- 00408      GENERAL RAMIREZ                              Entre Rios
- 00409      SAN JUSTO                                    Santa Fe
- 00410      ARRECIFES                                    Buenos Aires
- 00411      TOLEDO                                       Cordoba
- 00412      VIEDMA                                       Rio Negro
- 00413      COLON                                        Buenos Aires
- 00414      MERCEDES BS AS                               Buenos Aires
- 00415      TANDIL                                       Buenos Aires
- 00416      LA PAZ                                       Entre Rios
- 00417      MACIA                                        Entre Rios
- 00418      MARCOS JUAREZ                                Cordoba
- 00419      CONCEPCION DE LA SIERRA                      Misiones
- 00420      CALETA OLIVIA                                Santa Cruz
- 00421      GRANADERO BAIGORRIA                          Santa Fe
- 00422      MARIANO I. LOSA                              Corrientes
- 00423      SAN LORENZO                                  Corrientes
- 00424      INTERIOR DE CORRIENTES REGION 3              Corrientes
- 00425      CARMEN DE ARECO                              Buenos Aires
- 00426      SAN LUIS                                     San Luis
- 00427      SANTIAGO DEL ESTERO                          Sgo del Estero
- 00428      SAN SALVADOR DE JUJUY                        Jujuy
- 00429      CHIVILCOY                                    Buenos Aires
- 00430      COMODORO RIVADAVIA                           Chubut
- 00431      PERITO MORENO                                Santa Cruz
- 00432      EL CALAFATE                                  Santa Cruz
- 00433      RIO GALLEGOS                                 Santa Cruz
- 00434      RIO GRANDE                                   Tierra del Fuego
- 00435      COMANDANTE LUIS PIEDRABUENA                  Santa Cruz
- 00436      TRELEW                                       Chubut
- 00437      ZAPALA                                       Neuquen
- 00438      POMPEYA                                      Capital Federal
- 00439      BARRACAS                                     Capital Federal
- 00440      PARQUE PATRICIOS                             Capital Federal
- 00441      VILLA SOLDATI                                Capital Federal
- 00442      VILLA LUGANO                                 Capital Federal
- 00443      VILLA RIACHUELO                              Capital Federal
- 00444      PARQUE AVELLANEDA                            Capital Federal
- 00445      VILLA LURO                                   Capital Federal
- 00446      FLORESTA                                     Capital Federal
- 00447      VILLA DEL PARQUE                             Capital Federal
- 00448      VILLA GRAL MITRE                             Capital Federal
- 00449      VILLA SANTA RITA                             Capital Federal
- 00450      PARQUE CHACABUCO                             Capital Federal
- 00451      CABALLITO                                    Capital Federal
- 00452      BOEDO                                        Capital Federal
- 00453      ALMAGRO                                      Capital Federal
- 00454      BALVANERA                                    Capital Federal
- 00455      SAN CRISTOBAL                                Capital Federal
- 00456      SAN NICOLAS                                  Capital Federal
- 00457      MONSERRAT                                    Capital Federal
- 00458      CONSTITUCION                                 Capital Federal
- 00459      SAN TELMO                                    Capital Federal
- 00460      LA BOCA                                      Capital Federal
- 00461      VILLA CRESPO                                 Capital Federal
- 00462      ING. BUDGE                                   Buenos Aires
- 00463      RECOLETA                                     Capital Federal
- 00464      RETIRO                                       Capital Federal
- 00465      CHACARITA                                    Capital Federal
- 00466      PARQUE CHAS                                  Capital Federal
- 00467      AGRONOMIA                                    Capital Federal
- 00468      VILLA DEVOTO                                 Capital Federal
- 00469      VILLA URQUIZA                                Capital Federal
- 00470      LINIERS                                      Capital Federal
- 00471      VERSALLES                                    Capital Federal
- 00472      GRAND BOURG                                  Buenos Aires
- 00473      VILLA REAL                                   Capital Federal
- 00474      GENERAL PAZ                                  Corrientes
- 00475      VILLA ALTA                                   Misiones
- 00476      CARAGUATAY                                   Misiones
- 00477      EL ALCAZAR                                   Misiones
- 00478      PUERTO PIRAY                                 Misiones
- 00479      CHAJARI                                      Entre Rios
- 00480      TACUARENDI                                   Santa Fe
- 00481      CARLOS PELLEGRINI                            Santa Fe
- 00482      CALCHAQUI                                    Santa Fe
- 00483      GOBERNADOR JUAN PUJOL                        Corrientes
- 00484      SALTO ENCANTADO                              Misiones
- 00485      COGHGLAN                                     Capital Federal
- 00486      CIPOLLETTI                                   Rio Negro
- 00487      BARILOCHE                                    Rio Negro
- 00488      EL BOLSON                                    Rio Negro
- 00489      CONELO                                       La Pampa
- 00490      SANTA ROSA  -LA PAMPA-                       La Pampa
- 00491      COLONIA 25 DE MAYO                           Misiones
- 00492      VILLA CARLOS PAZ                             Cordoba
- 00493      MALAGUE O                                    Cordoba
- 00494      LA CALERA                                    Cordoba
- 00495      SALDAN                                       Cordoba
- 00496      MENDILAZA                                    Cordoba
- 00497      UNQUILLO                                     Cordoba
- 00498      SALSIPUEDES                                  Cordoba
- 00499      MALVINAS ARGENTINAS                          Cordoba
- 00500      SAAVEDRA                                     Capital Federal
- 00501      SAN JUAN                                     San Juan
- 00502      CIUDAD AUTONOMA                              Capital Federal
- 00503      VILLA CONSTITUCION                           Santa Fe
- 00504      SAN JOSE DEL RINCON                          Santa Fe
- 00505      GODOY CRUZ                                   Mendoza
- 00506      PUERTO  LIBERTAD                             Misiones
- 00507      PIEDRITAS                                    Corrientes
- 00508      GENERAL ROCA                                 Cordoba
- 00509      GUALEGUAYCHU                                 Entre Rios
- 00510      GENERAL ALVEAR                               Mendoza
- 00511      RECREO                                       Santa Fe
- 00512      COLASTINE NORTE                              Santa Fe
- 00513      NUEVA CORDOBA                                Cordoba
- 00514      PATERNAL                                     Capital Federal
- 00515      CERRO DE LA ROSA                             Cordoba
- 00516      SAN ANTONIO                                  Misiones
- 00517      URDINARRAIN                                  Entre Rios
- 00518      CAPILLA DEL MONTE                            Cordoba
- 00519      COMERCIAL                                    Cordoba
- 00520      BALCARCE                                     Buenos Aires
- 00521      PALERMO                                      Capital Federal
- 00522      ALVEAR                                       Corrientes
- 00523      LA CRUZ                                      Corrientes
- 00524      MOCORETA                                     Corrientes
- 00525      SAUCE                                        Corrientes
- 00526      YAPEYU                                       Corrientes
- 00527      VILLA PUEYRREDON                             Capital Federal
- 00528      GDRO. BAIGORRIA                              Santa Fe
- 00529      FLORES                                       Capital Federal
- 00530      SUNCHALES                                    Santa Fe
- 00531      HIPOLITO IRIGOYEN                            Misiones
- 00532      BUSTINZA                                     Santa Fe
- 00533      JUAREZ CELMAN                                Cordoba
- 00534      CORPUS                                       Misiones
- 00535      VILLAGUAY                                    Entre Rios
- 00536      COMANDANTE ANDRESITO                         Misiones
- 00537      PALMAR GRANDE                                Corrientes
- 00538      RAMADA PASO                                  Corrientes
- 00539      LOMAS DE VALLEJOS                            Corrientes
- 00540      BANDA DEL RIO SALI                           Tucuman
- 00541      SATURNINO MARIA LASPIUR                      Cordoba
- 00542      CATAMARCA                                    Catamarca
- 00543      INTERIOR DE CORRIENTES REGION 2              Corrientes
- 00544      INTERIOR CHACO REGION 3                      Chaco
- 00545      INTERIOR CHACO REGION 2                      Chaco
- 00546      BELGRANO                                     Capital Federal
- 00547      INTERIOR DE MISIONES                         Misiones
- 00548      VILLA GENERAL GUEMES                         Formosa
- 00549      ISLAS DEL IBICUY                             Entre Rios
- 00550      CA ADA ROSQUIN                               Santa Fe
- 00551      RIO MAYO                                     Chubut
- 00552      RANCHOS                                      Buenos Aires
- 00553      PUERTO GENERAL  SAN MARTIN                   Santa Fe
- 00554      CARLOS PAZ                                   Cordoba
- 00555      SAN JOSE                                     Misiones
- 00556      INTERIOR FORMOSA  REGION 3                   Formosa
- 00557      IPON                                         Cordoba
- 00558      LA PAMPA                                     La Pampa
- 00559      MANANTIALES-CTES                             Corrientes
- 00560      CHUBUT                                       Neuquen
- 00561      USHUAIA                                      Neuquen
- 00562      RIO NEGRO                                    Rio Negro
- 00563      NEUQUEN                                      Rio Negro
- 00564      CALAFATE                                     Santa Cruz
- 00565      ROMANG-SANTA FE                              Santa Fe
- 00566      COLONIA CAROLINA                             Corrientes
- 00567      GOYA -SOLO PARA CLIENTE CIVA SA              Corrientes
- 00568      JARD N                                       Cordoba
- 00569      SAN MIGUEL  STA FE                           Santa Fe
- 00571      COLONIA AURORA                               Misiones
- 00572      CARCARA A                                    Santa Fe
- 00573      JARDIN ESPINOZA                              Cordoba
- 00574      VILLA  DEL ROSARIO                           Cordoba
- 00575      GUAYMALLEN                                   Mendoza
- 00576      VILLA MERCEDES                               San Luis
- 00577      COLONIAS UNIDAS                              Chaco
- 00578      COLONIA LIBERTAD                             Corrientes
- 00579      NU EZ                                        Capital Federal
- 00580      COLEGIALES                                   Capital Federal
- 00581      ORTUZAR                                      Capital Federal
- 00582      LA MATANZA                                   Buenos Aires
- 00583      BERNARDO DE IRIGOYEN                         Misiones
- 00584      VELEZ SARFIELD                               Capital Federal
- 00585      MONTE CASTRO                                 Capital Federal
- 00586      TANCACHA                                     Cordoba
- 00587      CONCEPCION (UNICAMENTE P/ BANCO DE CORRIENTE Corrientes
- 00588      PASO LEDESMA                                 Corrientes
- 00589      SANTA CRUZ                                   Santa Cruz
- 00590      VICTORIA                                     Entre Rios
- 00591      ATALIVA                                      Santa Fe
- 00592      COSQUIN                                      Cordoba
- 00593      GENERAL GUEMES                               Chaco
- 00594      DERQUI                                       Corrientes
- 00596      CARLOS KEEN                                  Buenos Aires
- 00597      LAS PALMAS                                   Chaco
- 00598      FEDERACION                                   Entre Rios
- 00599      SAN FERNANDO                                 Chaco
- 00600      GUALEGUAY                                    Entre Rios
- 00601      VILLA MAIPU                                  Buenos Aires
- 00602      SAN JAIME                                    Corrientes
- 00603      MISION LAIHSI                                Formosa
- 00604      MONTE BUEY                                   Cordoba
- 00605      MALABRIGO                                    Santa Fe
- 00606      NAPENAY CHACO                                Chaco
- 00607      CEIBAS                                       Entre Rios
- 00608      HARDY                                        Santa Fe
- 00609      ENSENADA                                     Corrientes
- 00610      ESTACION FLORES                              Cordoba
- 00611      CONGRESO                                     Cordoba
- 00612      CABILDO                                      Cordoba
- 00613      SANTA ISABEL                                 Cordoba
- 00614      MATIENZO                                     Cordoba
- 00615      CIUDADELA                                    Cordoba
- 00616      PARQUE HORIZONTE                             Cordoba
- 00617      VILLA EL LIBERTADOR                          Cordoba
- 00618      BARRIO FLORES                                Cordoba
- 00619      SAN ANTONIO                                  Cordoba
- 00620      INAUDI                                       Cordoba
- 00621      OBISPO SAN ANTONIO                           Cordoba
- 00622      OBISPO ANGELELLI                             Cordoba
- 00623      SAN FERNANDO                                 Cordoba
- 00624      CORAZON EUCARISTICO DE JESUS                 Cordoba
- 00625      MAIPU                                        Cordoba
- 00626      JOSE HERNANDEZ                               Cordoba
- 00627      CORONEL JOSE I. DIAZ                         Cordoba
- 00628      B  CARCANO DE HORIZONTE                      Cordoba
- 00629      CORONEL OLMEDO                               Cordoba
- 00630      OBSERVATORIO                                 Cordoba
- 00631      LOS ROBLES                                   Cordoba
- 00632      REPUBLICA  RESIDENCIAL                       Cordoba
- 00633      RESIDENCIAL LOS ALPES                        Cordoba
- 00634      LAS PALMAS                                   Cordoba
- 00635      PLAZA  ALBERDI                               Cordoba
- 00636      LOS NARANJOS                                 Cordoba
- 00637      B  LOS PLATANOS                              Cordoba
- 00638      GENERAL PAZ                                  Cordoba
- 00639      YAPEYU                                       Cordoba
- 00640      LOS PINOS                                    Cordoba
- 00641      CHACRA DE LA MERCED                          Cordoba
- 00642      PALMAR                                       Cordoba
- 00643      BAJADA DE PIEDRA                             Cordoba
- 00644      LA FLORESTA                                  Cordoba
- 00645      SAN VICENTE                                  Cordoba
- 00646      MALDONADO                                    Cordoba
- 00647      OBISPO ECHENIQUE ALTA                        Cordoba
- 00648      EMPALME                                      Cordoba
- 00649      JUNIORS                                      Cordoba
- 00650      DEAN FUNES                                   Cordoba
- 00651      ITUZAINGO                                    Cordoba
- 00652      CIUDAD DE MIS SUE OS                         Cordoba
- 00653      COLINAS DE VELEZ SARFIELD                    Cordoba
- 00654      GENERAL BUSTOS                               Cordoba
- 00655      VILLA BOEDO                                  Cordoba
- 00656      LOLA                                         Cordoba
- 00657      RENACIMIENTO                                 Cordoba
- 00658      VILLA RIVERA - INDARTE                       Cordoba
- 00659      WARCALDE                                     Cordoba
- 00660      NUESTRO HOGAR III                            Cordoba
- 00661      ARGUELLO NORTE                               Cordoba
- 00662      ARGUELLO SEGUNDO                             Cordoba
- 00663      9 DE JULIO                                   Cordoba
- 00664      VILLA NORTE                                  Cordoba
- 00665      VILLA CORNU                                  Cordoba
- 00666      VILLA  ALLENDE                               Cordoba
- 00667      B  MERCANTIL                                 Cordoba
- 00668      GRANJA DE FUNES                              Cordoba
- 00669      VILLA BELGRANO                               Cordoba
- 00670      SANTA CECILIA                                Cordoba
- 00671      LOS BOULEVARES                               Cordoba
- 00672      CENTENARIO                                   Cordoba
- 00673      PARQUE CAPITAL                               Cordoba
- 00674      URCA                                         Cordoba
- 00675      ESCOBAR                                      Cordoba
- 00676      B  VILLA CABRERA                             Cordoba
- 00677      LAS MARGARITAS                               Cordoba
- 00678      LA FRANCE                                    Cordoba
- 00679      POETA LUGONES                                Cordoba
- 00680      GUI AZU                                      Cordoba
- 00681      JORGE NEWBERY                                Cordoba
- 00682      MARQUEZ DE SOBREMONTE                        Cordoba
- 00683      LOS PARAISOS                                 Cordoba
- 00684      SAN MARTIN - CDBA.-                          Cordoba
- 00685      PUEYRREDON                                   Cordoba
- 00686      LA PROVIDENCIA                               Cordoba
- 00687      COFICO                                       Cordoba
- 00688      ZONA NORTE -ALTA CORDOBA                     Cordoba
- 00689      PANAMERICANO                                 Cordoba
- 00690      VILLA GRAN PARQUE                            Cordoba
- 00691      EL GATEADO                                   Cordoba
- 00692      B  PARQUE LICEO                              Cordoba
- 00693      VILLA REVOL                                  Cordoba
- 00694      CHACHAPOYAS                                  Cordoba
- 00695      SAN JORGE                                    Cordoba
- 00696      LA DOROTEA                                   Cordoba
- 00697      ARENALES                                     Cordoba
- 00698      AYACUCHO                                     Cordoba
- 00699      VILLA  AZALAIS                               Cordoba
- 00700      PATRICIO PALMERO                             Cordoba
- 00701      GENERAL  BUSTOS                              Cordoba
- 00702      LEANDRO N  ALEM                              Cordoba
- 00703      NUEVA ITALIA                                 Cordoba
- 00704      ELIAS YOFRE                                  Cordoba
- 00705      VALLE ESCONDIDO                              Cordoba
- 00706      QUEBRADA LAS ROSAS                           Cordoba
- 00707      DON BOSCO                                    Cordoba
- 00708      JUSTO JOSE URQUIZA                           Cordoba
- 00709      BARRIO CENTRO                                Cordoba
- 00710      MICROCENTRO                                  Cordoba
- 00711      RESIDENCIAL SAN ROQUE                        Cordoba
- 00712      SANTA ANA                                    Cordoba
- 00713      CONCEPCION                                   Corrientes
- 00714      CAPITAN SOLARI                               Chaco
- 00715      LIBERTADOR SAN MARTIN                        Entre Rios
- 00717      TACOPOZO                                     Chaco
- 00718      LARROQUE                                     Entre Rios
- 00719      VIREYES PARTIDO DE SAN FERNANDO              Buenos Aires
- 00720      SAN CARLOS                                   Misiones
- 00721      GUADALUPE NORTE                              Santa Fe
- 00722      PUEBLO LIBERTADOR                            Corrientes
- 02930      SAN PEDRO                                    Buenos Aires
- 03085      PILAR                                        Santa Fe
- 05001      BAHIA BLANCA                                 Buenos Aires
- 05002      LAS GARCITAS                                 Chaco
- 08332      GENERAL ROCA                                 Rio Negro
- 08333      LA  PICADA                                   Entre Rios
- 08334      COLONIA CARLOS PELLEGRINI CTES               Corrientes
- 08335      INTERIOR DE FORMOSA REGION 2                 Formosa
- 08336      SAN CAYETANO                                 Corrientes
- 08337      LA CRUZ                                      Corrientes
- 08338      FORMOSA SOLO PARA SYNERLOGIC/ TELECOM        Formosa
- 08339      SANTA ELENA                                  Entre Rios
- 08340      LAS GARZAS                                   Santa Fe
- 08341      COLONIA PASTORIL                             Formosa
- 99998      COLONIA M MAGDALENA                          Misiones
- 99999      BASAVILBASO                                  Entre Rios
+00001,CORRIENTES CAPITAL,Corrientes
+00002,GOYA,Corrientes
+00003,LAVALLE,Corrientes
+00004,SANTA LUCIA,Corrientes
+00005,BELLA VISTA CTES.,Corrientes
+00006,SALADAS,Corrientes
+00007,TATACUA,Corrientes
+00008,CAA CATI,Corrientes
+00009,EMPEDRADO,Corrientes
+00010,ENTREGA / RETIRA DE DEPOSITO,Corrientes
+00011,ITATI,Corrientes
+00012,ITUZAINGO- CORRIENTES,Corrientes
+00013,PASO DE LA PATRIA,Corrientes
+00014,SAN LUIS DEL PALMAR,Corrientes
+00015,SAN COSME,Corrientes
+00016,GOBERNADOR VIRASORO,Corrientes
+00017,COLONIA LIEBIG´S,Corrientes
+00018,SANTA ROSA CORRIENTES,Corrientes
+00019,PASO DE LOS LIBRES,Corrientes
+00020,CURUZU CUATIA,Corrientes
+00021,MERCEDES CORRIENTES,Corrientes
+00022,MONTE CASEROS,Corrientes
+00023,RESISTENCIA,Chaco
+00024,BARRANQUERAS,Chaco
+00025,PUERTO TIROL,Chaco
+00026,LA VERDE,Chaco
+00027,LA ESCONDIDA,Chaco
+00028,PRESIDENCIA LA PLAZA,Chaco
+00029,MACHAGAI,Chaco
+00030,QUITILIPI,Chaco
+00031,ROQUE SAENZ PEÑA,Chaco
+00032,CORZUELA,Chaco
+00033,CAMPO LARGO,Chaco
+00034,CHARATA,Chaco
+00035,SAN BERNARDO,Chaco
+00036,VILLA ANGELA,Chaco
+00037,TRES ARROYOS,Buenos Aires
+00038,TRES ISLETAS,Chaco
+00039,JUAN JOSE CASTELLI,Chaco
+00040,GENERAL SAN MARTIN CHACO,Chaco
+00041,LA LEONESA,Chaco
+00042,BASAIL,Chaco
+00043,GENERAL MANSILLA,Formosa
+00044,VILLA ESCOLAR,Formosa
+00045,PIRANE,Formosa
+00046,PALO SANTO,Formosa
+00047,COMANDANTE FONTANA,Formosa
+00048,IBARRETA,Formosa
+00049,LAS LOMITAS,Formosa
+00050,EL COLORADO FSA.,Formosa
+00051,VILLA 213,Formosa
+00052,ESTANISLAO DEL CAMPO,Formosa
+00053,CLORINDA,Formosa
+00054,LAGUNA BLANCA,Formosa
+00055,EL ESPINILLO,Formosa
+00056,RIACHO HE-HE,Formosa
+00057,OBERA,Misiones
+00058,SANTA ANA (MISIONES),Misiones
+00059,SAN IGNACIO,Misiones
+00060,LEANDRO N.ALEM,Misiones
+00061,GOBERNADOR ROCA,Misiones
+00062,ARISTOBULO DEL VALLE MNES.,Misiones
+00063,JARDIN DE AMERICA,Misiones
+00064,CAPIOVI,Misiones
+00065,APOSTOLES,Misiones
+00066,SANTO PIPO,Misiones
+00067,CANDELARIA,Misiones
+00068,PUERTO RICO,Misiones
+00069,CERRO AZUL,Misiones
+00070,EL DORADO,Misiones
+00071,PUERTO ESPERANZA,Misiones
+00072,WANDA,Misiones
+00073,PUERTO IGUAZU,Misiones
+00074,9 DE JULIO CTES.,Corrientes
+00075,COLONIA TABAY,Corrientes
+00076,BELLA VISTA,Cordoba
+00077,FELIPE YOFRE,Corrientes
+00078,ITA IBATE,Corrientes
+00079,MANTILLA,Corrientes
+00080,MBURUCUYA,Corrientes
+00081,PERUGORRIA,Corrientes
+00082,RIACHUELO,Corrientes
+00083,SAN ROQUE,Corrientes
+00084,BIALET MASSE,Cordoba
+00085,SANTO TOME- CORRIENTES-,Corrientes
+00086,AVIA TERAI,Chaco
+00087,COLONIA BENITEZ,Chaco
+00088,COLONIA ELISA,Chaco
+00089,CONCEPCION DEL BERMEJO,Chaco
+00090,CORONEL DU GRATY,Chaco
+00091,FONTANA,Chaco
+00092,GANCEDO,Chaco
+00093,LA CLOTILDE,Chaco
+00094,LA TIGRA,Chaco
+00095,LAS BREÑAS,Chaco
+00096,CERVECEROS,Cordoba
+00097,MAKALLE,Chaco
+00098,MARGARITA BELEN,Chaco
+00099,PAMPA DEL INFIERNO,Chaco
+00100,GENERAL PINEDO,Chaco
+00101,SANTA SYLVINA,Chaco
+00102,VILLA BERTHET,Chaco
+00103,FORMOSA,Formosa
+00104,GENERAL BELGRANO MANUEL FORMOSA,Formosa
+00105,LAGUNA NAICK-NECK,Formosa
+00106,COLON,Cordoba
+00107,POZO DEL TIGRE,Formosa
+00108,TACAAGLE,Formosa
+00109,POSADAS,Misiones
+00110,CAPITAL FEDERAL,Capital Federal
+00111,GARIN,Buenos Aires
+00112,QUILMES,Buenos Aires
+00113,FLORENCIO VARELA,Buenos Aires
+00114,SAN MARTIN BS AS,Buenos Aires
+00115,AVELLANEDA BS A S.,Buenos Aires
+00116,FLORIDA,Buenos Aires
+00117,VIRREYES,Buenos Aires
+00118,MORON,Buenos Aires
+00119,DOCK SUD,Buenos Aires
+00120,SAN MIGUEL BS. AS,Buenos Aires
+00121,LOMAS DE ZAMORA,Buenos Aires
+00122,ALVAREZ FRANCISCO,Buenos Aires
+00123,ALDO BONZI,Buenos Aires
+00124,ISIDRO CASANOVA,Buenos Aires
+00125,CASEROS,Capital Federal
+00126,CASTELAR,Buenos Aires
+00127,CASTILLO RAFAEL,Buenos Aires
+00128,CIUDADELA,Buenos Aires
+00129,CIUDAD EVITA,Buenos Aires
+00130,EL PALOMAR,Buenos Aires
+00131,GREGORIO DE LAFERRERE,Buenos Aires
+00132,GONZALEZ CATAN,Buenos Aires
+00133,HAEDO,Buenos Aires
+00134,HURLINGHAM,Buenos Aires
+00135,JOSE INGENIEROS,Buenos Aires
+00136,ITUZAINGO,Buenos Aires
+00137,LA REJA,Buenos Aires
+00138,LIBERTAD,Buenos Aires
+00139,LOMAS DEL MIRADOR,Buenos Aires
+00140,LOMA HERMOSA,Buenos Aires
+00141,MARIANO ACOSTA,Buenos Aires
+00142,MARTIN CORONADO,Buenos Aires
+00143,MERLO,Buenos Aires
+00144,MORENO,Buenos Aires
+00145,PASO DEL REY,Buenos Aires
+00146,PONTEVEDRA,Buenos Aires
+00147,RAFAEL CASTILLO,Buenos Aires
+00148,RAMOS MEJIA,Buenos Aires
+00149,GENERAL RODRIGUEZ,Buenos Aires
+00150,SAENZ PEÑA,Buenos Aires
+00151,SAN ANTONIO DE PADUA,Buenos Aires
+00152,SAN JUSTO,Buenos Aires
+00153,SANTOS LUGARES,Buenos Aires
+00154,TABLADA,Buenos Aires
+00155,TAPIALES,Buenos Aires
+00156,VILLA BOSCH,Buenos Aires
+00157,VILLA MADERO,Buenos Aires
+00158,VILLA LUZURIAGA,Buenos Aires
+00159,VILLA RAFO,Buenos Aires
+00160,VILLA SARMIENTO,Buenos Aires
+00161,ACASSUSO,Buenos Aires
+00162,BANCALARI,Buenos Aires
+00163,BECCAR,Buenos Aires
+00164,BELLA VISTA BS AS,Buenos Aires
+00165,BENAVIDEZ,Buenos Aires
+00166,BOULOGNE SUR MER,Buenos Aires
+00167,CAMPO DE MAYO,Buenos Aires
+00168,CARAPACHAY,Buenos Aires
+00169,CHILAVERT,Buenos Aires
+00170,ARISTOBULO DEL VALLE BS AS,Buenos Aires
+00171,DEL VISO,Buenos Aires
+00172,DERQUI BS AS,Buenos Aires
+00173,DON TORCUATO,Buenos Aires
+00174,EL TALAR,Buenos Aires
+00175,GENERAL BOURG,Buenos Aires
+00176,JOSE C. PAZ,Buenos Aires
+00177,JOSE LEON SUAREZ,Buenos Aires
+00178,LA LUCILA,Buenos Aires
+00179,LOS POLVORINES,Buenos Aires
+00180,MALAVER,Buenos Aires
+00181,MARTINEZ,Buenos Aires
+00182,INGENIERO MASCHWITZ,Buenos Aires
+00183,MUÑIZ,Buenos Aires
+00184,MUNRO,Buenos Aires
+00185,PABLO NOGUES,Buenos Aires
+00186,OLIVOS,Buenos Aires
+00187,GENERAL PACHECO,Buenos Aires
+00188,PILAR,Buenos Aires
+00189,PABLO PODESTA,Buenos Aires
+00190,SAN ANDRES,Buenos Aires
+00191,SAN FERNANDO,Buenos Aires
+00192,SAN ISIDRO,Buenos Aires
+00193,ADOLFO SORDEAUX,Buenos Aires
+00194,TIGRE,Buenos Aires
+00195,VICENTE LOPEZ,Buenos Aires
+00196,VICTORIA,Buenos Aires
+00197,VILLA ADELINA,Buenos Aires
+00198,VILLA BALLESTER,Buenos Aires
+00199,VILLA DE MAYO,Buenos Aires
+00200,VILLA LYNCH,Buenos Aires
+00201,VILLA MARTELLI,Buenos Aires
+00202,WILLIAMS C.MORRIS,Buenos Aires
+00203,ADROGUE,Buenos Aires
+00204,ALMIRANTE BROWN EZPELETA,Buenos Aires
+00205,VALENTIN ALSINA,Buenos Aires
+00206,BANFIELD,Buenos Aires
+00207,BERAZATEGUI,Buenos Aires
+00208,BERISSO,Buenos Aires
+00209,BERNAL,Buenos Aires
+00210,BOSQUES,Buenos Aires
+00211,BURZACO,Buenos Aires
+00212,CANNING,Buenos Aires
+00213,RAFAEL CALZADA,Buenos Aires
+00214,CARAZA,Buenos Aires
+00215,CITY BELL,Buenos Aires
+00216,CLAYPOLE,Buenos Aires
+00217,DON BOSCO,Buenos Aires
+00218,EL JAGUEL,Buenos Aires
+00219,ENSENADA,Buenos Aires
+00220,EZEIZA,Buenos Aires
+00221,EZPELETA,Buenos Aires
+00222,VILLA FIORITO,Buenos Aires
+00223,GERLI,Buenos Aires
+00224,GLEW,Buenos Aires
+00225,GONNET,Buenos Aires
+00226,GUERNICA,Buenos Aires
+00227,JOSE MARMOL,Buenos Aires
+00228,ALEJANDRO KORN,Buenos Aires
+00229,LANUS,Buenos Aires
+00230,LONGCHAMPS,Buenos Aires
+00231,LLAVALLOL,Buenos Aires
+00232,LUIS GUILLON,Buenos Aires
+00233,MALVINAS ARGENTINAS,Buenos Aires
+00234,MONTE CHINGOLO,Buenos Aires
+00235,MONTE GRANDE,Buenos Aires
+00236,PIÑEYRO,Buenos Aires
+00237,PUNTA LARA,Buenos Aires
+00238,PLATANOS,Buenos Aires
+00239,VILLA GRAL BELGRANO,Cordoba
+00240,RANELAGH,Buenos Aires
+00241,REMEDIOS DE ESCALADA,Buenos Aires
+00242,SAN FRANCISCO SOLANO,Buenos Aires
+00243,SAN VICENTE,Buenos Aires
+00244,SARANDI,Buenos Aires
+00245,TEMPERLEY,Buenos Aires
+00246,TRISTAN SUAREZ,Buenos Aires
+00247,TURDECA,Buenos Aires
+00248,VILLA DOMINICO,Buenos Aires
+00249,VILLA ELISA,Buenos Aires
+00250,WILDE,Buenos Aires
+00251,ROSARIO,Santa Fe
+00252,SAN FRANCISCO,Cordoba
+00253,SANTO TOME,Santa Fe
+00254,CORDOBA,Cordoba
+00255,RECONQUISTA,Santa Fe
+00256,CHILECITO,La Rioja
+00257,MIRAFLORES,Chaco
+00258,CAÑADA DE GOMEZ,Santa Fe
+00259,GENERAL LAGOS,Santa Fe
+00260,LORETO STAGO DEL ESTERO,Sgo del Estero
+00261,RAFAELA,Santa Fe
+00262,CRESPO,Entre Rios
+00263,SANTA FE,Santa Fe
+00264,LAS TOSCAS,Santa Fe
+00265,PANAMBI,Misiones
+00266,LA FERRERE,Buenos Aires
+00267,FLORENCIA,Santa Fe
+00268,MONTE CRISTO,Cordoba
+00269,VILLA MARIA,Cordoba
+00270,VILLA ALLENDE,Cordoba
+00271,GOBERNADOR GALVEZ,Santa Fe
+00272,SASTRE,Santa Fe
+00273,SAN PEDRO,Misiones
+00274,CONCORDIA,Entre Rios
+00275,SAN CARLOS CENTRO,Santa Fe
+00276,ESTEBAN ECHEVERRIA,Buenos Aires
+00277,COLONIA VICTORIA,Misiones
+00278,COLONIA TIROLESA,Cordoba
+00279,SANTA ANA,Corrientes
+00280,VILLA OCAMPO,Santa Fe
+00281,AVELLANEDA,Santa Fe
+00282,CHAVARRIA,Corrientes
+00283,MATADEROS,Capital Federal
+00284,HERMOSO CAMPO,Chaco
+00285,ACEBAL,Santa Fe
+00286,9 DE JULIO MNES.,Misiones
+00287,INGENIERO JUAREZ,Formosa
+00288,VIRREY DEL PINO,Buenos Aires
+00289,LAS HERAS,Mendoza
+00290,TORTUGUITAS,Buenos Aires
+00291,FUNES,Santa Fe
+00292,PERGAMINO,Buenos Aires
+00293,BALLESTEROS,Cordoba
+00294,SAN VICENTE,Misiones
+00295,EL SOMBRERO,Corrientes
+00296,LA PLATA,Buenos Aires
+00297,TALAR DE PACHECO,Buenos Aires
+00298,PAVON ARRIBA,Santa Fe
+00299,HUMBOLDT,Santa Fe
+00300,ESCOBAR,Buenos Aires
+00301,SALADILLO,Buenos Aires
+00302,MENDOZA,Mendoza
+00303,CAMINO ALDAO,Cordoba
+00304,BELL VILLE,Cordoba
+00305,CAMPO VIERA,Misiones
+00306,MONTECARLO,Misiones
+00307,COLAZO,Cordoba
+00308,TORTUGAS,Santa Fe
+00309,PUERTO VILELA,Chaco
+00310,FERREYRA,Cordoba
+00311,LUJAN,Buenos Aires
+00312,VILLA RETIRO,Cordoba
+00313,ALTA GRACIA,Cordoba
+00314,SAN JAVIER,Misiones
+00315,LA RIOJA,La Rioja
+00316,LA FALDA,Cordoba
+00317,MANANTIALES,Tucuman
+00318,SANTA ROSA -MENDOZA-,Mendoza
+00319,CASILDA,Santa Fe
+00320,CHACABUCO,Buenos Aires
+00321,FATIMA,Buenos Aires
+00322,BARADERO,Capital Federal
+00323,LA TABLADA,Buenos Aires
+00324,DEVOTO,Cordoba
+00325,PARANA,Entre Rios
+00326,SAUCE VIEJO,Santa Fe
+00327,PAMPA DEL INDIO,Chaco
+00328,DOS DE MAYO,Misiones
+00329,VILLA GUILLERMINA,Santa Fe
+00330,LA TOMA,San Luis
+00331,CERRITO,Entre Rios
+00332,CAMPO GRANDE,Misiones
+00333,9 DE JULIO BS AS,Buenos Aires
+00334,SPEGAZZINI C,Buenos Aires
+00335,ESPERANZA,Santa Fe
+00336,GALVEZ,Santa Fe
+00337,ESQUINA,Corrientes
+00338,CUATRO BOCAS,Corrientes
+00339,LORETO,Corrientes
+00340,BRAGADO,Buenos Aires
+00341,FRONTERA,Santa Fe
+00342,SAN JORGE,Santa Fe
+00343,SAN MIGUEL DE TUCUMAN,Tucuman
+00344,VILLA CELINA,Buenos Aires
+00345,RUIZ DE MONTOYA,Misiones
+00346,ARGUELLO,Cordoba
+00347,CALCHIN,Cordoba
+00348,SALTO GRANDE,Santa Fe
+00349,MARCOS PAZ,Buenos Aires
+00350,VILLA CORINA,Cordoba
+00351,DIAMANTE,Entre Rios
+00352,SAN LORENZO,Santa Fe
+00353,LINCOLN,Buenos Aires
+00354,ARROYITO,Cordoba
+00355,RIO CEBALLOS,Cordoba
+00356,ROLDAN,Santa Fe
+00357,BERON DE ASTRADA,Corrientes
+00358,VENADO TUERTO,Santa Fe
+00359,VILLA ZAGALA,Buenos Aires
+00360,JUNIN,Buenos Aires
+00361,MAGDALENA,Buenos Aires
+00362,ZARATE,Buenos Aires
+00363,PALOMAR,Buenos Aires
+00364,VILLA INSAURRALDE,Buenos Aires
+00365,GARUHAPE,Misiones
+00366,SAN MIGUEL,Corrientes
+00367,ARTEAGA,Santa Fe
+00368,VILLA ELISA,Entre Rios
+00369,MACIEL,Santa Fe
+00370,ALVEAR ( SANTA FE),Santa Fe
+00371,FIRMAT,Santa Fe
+00372,ARMSTRONG,Santa Fe
+00373,GARUPA,Misiones
+00374,SAN FERNANDO DEL VALLE,Catamarca
+00375,SAN CRISTOBAL STA FE,Santa Fe
+00376,AREQUITO,Santa Fe
+00377,LAS PAREJAS,Santa Fe
+00378,MAR DEL PLATA,Buenos Aires
+00379,SALTA,Salta
+00380,SAN RAFAEL,Mendoza
+00381,SAN JOSE DE LA ESQUINA,Santa Fe
+00382,CAPITAN BERMUDEZ,Santa Fe
+00383,CORREA,Santa Fe
+00384,LAS VARILLAS,Cordoba
+00385,RIO SEGUNDO,Cordoba
+00386,ALDEA MARIA LUISA,Entre Rios
+00387,PUEBLO MUÑOZ,Santa Fe
+00388,GOBERNADOR JUAN E.MARTINEZ,Corrientes
+00389,VILLA INSUPERABLE,Buenos Aires
+00390,SOLDINI,Santa Fe
+00391,RIO CUARTO,Cordoba
+00392,CAMPANA,Buenos Aires
+00393,PUERTO MADERO,Capital Federal
+00394,VILLA ALSINA,Buenos Aires
+00395,RECREO CATAMARCA,Catamarca
+00396,GENERAL VEDIA,Chaco
+00397,DEVOTO,Buenos Aires
+00398,PRESIDENCIA ROCA,Chaco
+00399,ARROYO SECO,Santa Fe
+00400,PEREZ,Santa Fe
+00401,CONCEPCION DEL URUGUAY,Entre Rios
+00402,JESUS MARIA,Cordoba
+00403,VILLA OLIVARI,Corrientes
+00404,PALMA SOLA,Formosa
+00405,CAÑUELAS,Buenos Aires
+00406,LUQUE,Cordoba
+00407,COLONIA PROGRESO,Corrientes
+00408,GENERAL RAMIREZ,Entre Rios
+00409,SAN JUSTO,Santa Fe
+00410,ARRECIFES,Buenos Aires
+00411,TOLEDO,Cordoba
+00412,VIEDMA,Rio Negro
+00413,COLON,Buenos Aires
+00414,MERCEDES BS AS,Buenos Aires
+00415,TANDIL,Buenos Aires
+00416,LA PAZ,Entre Rios
+00417,MACIA,Entre Rios
+00418,MARCOS JUAREZ,Cordoba
+00419,CONCEPCION DE LA SIERRA,Misiones
+00420,CALETA OLIVIA,Santa Cruz
+00421,GRANADERO BAIGORRIA,Santa Fe
+00422,MARIANO I. LOSA,Corrientes
+00423,SAN LORENZO,Corrientes
+00424,INTERIOR DE CORRIENTES REGION 3,Corrientes
+00425,CARMEN DE ARECO,Buenos Aires
+00426,SAN LUIS,San Luis
+00427,SANTIAGO DEL ESTERO,Sgo del Estero
+00428,SAN SALVADOR DE JUJUY,Jujuy
+00429,CHIVILCOY,Buenos Aires
+00430,COMODORO RIVADAVIA,Chubut
+00431,PERITO MORENO,Santa Cruz
+00432,EL CALAFATE,Santa Cruz
+00433,RIO GALLEGOS,Santa Cruz
+00434,RIO GRANDE,Tierra del Fuego
+00435,COMANDANTE LUIS PIEDRABUENA,Santa Cruz
+00436,TRELEW,Chubut
+00437,ZAPALA,Neuquen
+00438,POMPEYA,Capital Federal
+00439,BARRACAS,Capital Federal
+00440,PARQUE PATRICIOS,Capital Federal
+00441,VILLA SOLDATI,Capital Federal
+00442,VILLA LUGANO,Capital Federal
+00443,VILLA RIACHUELO,Capital Federal
+00444,PARQUE AVELLANEDA,Capital Federal
+00445,VILLA LURO,Capital Federal
+00446,FLORESTA,Capital Federal
+00447,VILLA DEL PARQUE,Capital Federal
+00448,VILLA GRAL MITRE,Capital Federal
+00449,VILLA SANTA RITA,Capital Federal
+00450,PARQUE CHACABUCO,Capital Federal
+00451,CABALLITO,Capital Federal
+00452,BOEDO,Capital Federal
+00453,ALMAGRO,Capital Federal
+00454,BALVANERA,Capital Federal
+00455,SAN CRISTOBAL,Capital Federal
+00456,SAN NICOLAS,Capital Federal
+00457,MONSERRAT,Capital Federal
+00458,CONSTITUCION,Capital Federal
+00459,SAN TELMO,Capital Federal
+00460,LA BOCA,Capital Federal
+00461,VILLA CRESPO,Capital Federal
+00462,ING. BUDGE,Buenos Aires
+00463,RECOLETA,Capital Federal
+00464,RETIRO,Capital Federal
+00465,CHACARITA,Capital Federal
+00466,PARQUE CHAS,Capital Federal
+00467,AGRONOMIA,Capital Federal
+00468,VILLA DEVOTO,Capital Federal
+00469,VILLA URQUIZA,Capital Federal
+00470,LINIERS,Capital Federal
+00471,VERSALLES,Capital Federal
+00472,GRAND BOURG,Buenos Aires
+00473,VILLA REAL,Capital Federal
+00474,GENERAL PAZ,Corrientes
+00475,VILLA ALTA,Misiones
+00476,CARAGUATAY,Misiones
+00477,EL ALCAZAR,Misiones
+00478,PUERTO PIRAY,Misiones
+00479,CHAJARI,Entre Rios
+00480,TACUARENDI,Santa Fe
+00481,CARLOS PELLEGRINI,Santa Fe
+00482,CALCHAQUI,Santa Fe
+00483,GOBERNADOR JUAN PUJOL,Corrientes
+00484,SALTO ENCANTADO,Misiones
+00485,COGHGLAN,Capital Federal
+00486,CIPOLLETTI,Rio Negro
+00487,BARILOCHE,Rio Negro
+00488,EL BOLSON,Rio Negro
+00489,CONELO,La Pampa
+00490,SANTA ROSA -LA PAMPA-,La Pampa
+00491,COLONIA 25 DE MAYO,Misiones
+00492,VILLA CARLOS PAZ,Cordoba
+00493,MALAGUEÑO,Cordoba
+00494,LA CALERA,Cordoba
+00495,SALDAN,Cordoba
+00496,MENDILAZA,Cordoba
+00497,UNQUILLO,Cordoba
+00498,SALSIPUEDES,Cordoba
+00499,MALVINAS ARGENTINAS,Cordoba
+00500,SAAVEDRA,Capital Federal
+00501,SAN JUAN,San Juan
+00502,CIUDAD AUTONOMA,Capital Federal
+00503,VILLA CONSTITUCION,Santa Fe
+00504,SAN JOSE DEL RINCON,Santa Fe
+00505,GODOY CRUZ,Mendoza
+00506,PUERTO LIBERTAD,Misiones
+00507,PIEDRITAS,Corrientes
+00508,GENERAL ROCA,Cordoba
+00509,GUALEGUAYCHU,Entre Rios
+00510,GENERAL ALVEAR,Mendoza
+00511,RECREO,Santa Fe
+00512,COLASTINE NORTE,Santa Fe
+00513,NUEVA CORDOBA,Cordoba
+00514,PATERNAL,Capital Federal
+00515,CERRO DE LA ROSA,Cordoba
+00516,SAN ANTONIO,Misiones
+00517,URDINARRAIN,Entre Rios
+00518,CAPILLA DEL MONTE,Cordoba
+00519,COMERCIAL,Cordoba
+00520,BALCARCE,Buenos Aires
+00521,PALERMO,Capital Federal
+00522,ALVEAR,Corrientes
+00523,LA CRUZ,Corrientes
+00524,MOCORETA,Corrientes
+00525,SAUCE,Corrientes
+00526,YAPEYU,Corrientes
+00527,VILLA PUEYRREDON,Capital Federal
+00528,GDRO. BAIGORRIA,Santa Fe
+00529,FLORES,Capital Federal
+00530,SUNCHALES,Santa Fe
+00531,HIPOLITO IRIGOYEN,Misiones
+00532,BUSTINZA,Santa Fe
+00533,JUAREZ CELMAN,Cordoba
+00534,CORPUS,Misiones
+00535,VILLAGUAY,Entre Rios
+00536,COMANDANTE ANDRESITO,Misiones
+00537,PALMAR GRANDE,Corrientes
+00538,RAMADA PASO,Corrientes
+00539,LOMAS DE VALLEJOS,Corrientes
+00540,BANDA DEL RIO SALI,Tucuman
+00541,SATURNINO MARIA LASPIUR,Cordoba
+00542,CATAMARCA,Catamarca
+00543,INTERIOR DE CORRIENTES REGION 2,Corrientes
+00544,INTERIOR CHACO REGION 3,Chaco
+00545,INTERIOR CHACO REGION 2,Chaco
+00546,BELGRANO,Capital Federal
+00547,INTERIOR DE MISIONES,Misiones
+00548,VILLA GENERAL GUEMES,Formosa
+00549,ISLAS DEL IBICUY,Entre Rios
+00550,CAÑADA ROSQUIN,Santa Fe
+00551,RIO MAYO,Chubut
+00552,RANCHOS,Buenos Aires
+00553,PUERTO GENERAL SAN MARTIN,Santa Fe
+00554,CARLOS PAZ,Cordoba
+00555,SAN JOSE,Misiones
+00556,INTERIOR FORMOSA REGION 3,Formosa
+00557,IPONÁ,Cordoba
+00558,LA PAMPA,La Pampa
+00559,MANANTIALES-CTES,Corrientes
+00560,CHUBUT,Neuquen
+00561,USHUAIA,Neuquen
+00562,RIO NEGRO,Rio Negro
+00563,NEUQUEN,Rio Negro
+00564,CALAFATE,Santa Cruz
+00565,ROMANG-SANTA FE,Santa Fe
+00566,COLONIA CAROLINA,Corrientes
+00567,GOYA -SOLO PARA CLIENTE CIVA SA,Corrientes
+00568,JARDÍN,Cordoba
+00569,SAN MIGUEL STA FE,Santa Fe
+00571,COLONIA AURORA,Misiones
+00572,CARCARAÑA,Santa Fe
+00573,JARDIN ESPINOZA,Cordoba
+00574,VILLA DEL ROSARIO,Cordoba
+00575,GUAYMALLEN,Mendoza
+00576,VILLA MERCEDES,San Luis
+00577,COLONIAS UNIDAS,Chaco
+00578,COLONIA LIBERTAD,Corrientes
+00579,NUÑEZ,Capital Federal
+00580,COLEGIALES,Capital Federal
+00581,ORTUZAR,Capital Federal
+00582,LA MATANZA,Buenos Aires
+00583,BERNARDO DE IRIGOYEN,Misiones
+00584,VELEZ SARFIELD,Capital Federal
+00585,MONTE CASTRO,Capital Federal
+00586,TANCACHA,Cordoba
+00587,CONCEPCION (UNICAMENTE P/ BANCO DE CORRIENTE,Corrientes
+00588,PASO LEDESMA,Corrientes
+00589,SANTA CRUZ,Santa Cruz
+00590,VICTORIA,Entre Rios
+00591,ATALIVA,Santa Fe
+00592,COSQUIN,Cordoba
+00593,GENERAL GUEMES,Chaco
+00594,DERQUI,Corrientes
+00596,CARLOS KEEN,Buenos Aires
+00597,LAS PALMAS,Chaco
+00598,FEDERACION,Entre Rios
+00599,SAN FERNANDO,Chaco
+00600,GUALEGUAY,Entre Rios
+00601,VILLA MAIPU,Buenos Aires
+00602,SAN JAIME,Corrientes
+00603,MISION LAIHSI,Formosa
+00604,MONTE BUEY,Cordoba
+00605,MALABRIGO,Santa Fe
+00606,NAPENAY CHACO,Chaco
+00607,CEIBAS,Entre Rios
+00608,HARDY,Santa Fe
+00609,ENSENADA,Corrientes
+00610,ESTACION FLORES,Cordoba
+00611,CONGRESO,Cordoba
+00612,CABILDO,Cordoba
+00613,SANTA ISABEL,Cordoba
+00614,MATIENZO,Cordoba
+00615,CIUDADELA,Cordoba
+00616,PARQUE HORIZONTE,Cordoba
+00617,VILLA EL LIBERTADOR,Cordoba
+00618,BARRIO FLORES,Cordoba
+00619,SAN ANTONIO,Cordoba
+00620,INAUDI,Cordoba
+00621,OBISPO SAN ANTONIO,Cordoba
+00622,OBISPO ANGELELLI,Cordoba
+00623,SAN FERNANDO,Cordoba
+00624,CORAZON EUCARISTICO DE JESUS,Cordoba
+00625,MAIPU,Cordoba
+00626,JOSE HERNANDEZ,Cordoba
+00627,CORONEL JOSE I. DIAZ,Cordoba
+00628,B° CARCANO DE HORIZONTE,Cordoba
+00629,CORONEL OLMEDO,Cordoba
+00630,OBSERVATORIO,Cordoba
+00631,LOS ROBLES,Cordoba
+00632,REPUBLICA RESIDENCIAL,Cordoba
+00633,RESIDENCIAL LOS ALPES,Cordoba
+00634,LAS PALMAS,Cordoba
+00635,PLAZA ALBERDI,Cordoba
+00636,LOS NARANJOS,Cordoba
+00637,B° LOS PLATANOS,Cordoba
+00638,GENERAL PAZ,Cordoba
+00639,YAPEYU,Cordoba
+00640,LOS PINOS,Cordoba
+00641,CHACRA DE LA MERCED,Cordoba
+00642,PALMAR,Cordoba
+00643,BAJADA DE PIEDRA,Cordoba
+00644,LA FLORESTA,Cordoba
+00645,SAN VICENTE,Cordoba
+00646,MALDONADO,Cordoba
+00647,OBISPO ECHENIQUE ALTA,Cordoba
+00648,EMPALME,Cordoba
+00649,JUNIORS,Cordoba
+00650,DEAN FUNES,Cordoba
+00651,ITUZAINGO,Cordoba
+00652,CIUDAD DE MIS SUEÑOS,Cordoba
+00653,COLINAS DE VELEZ SARFIELD,Cordoba
+00654,GENERAL BUSTOS,Cordoba
+00655,VILLA BOEDO,Cordoba
+00656,LOLA,Cordoba
+00657,RENACIMIENTO,Cordoba
+00658,VILLA RIVERA - INDARTE,Cordoba
+00659,WARCALDE,Cordoba
+00660,NUESTRO HOGAR III,Cordoba
+00661,ARGUELLO NORTE,Cordoba
+00662,ARGUELLO SEGUNDO,Cordoba
+00663,9 DE JULIO,Cordoba
+00664,VILLA NORTE,Cordoba
+00665,VILLA CORNU,Cordoba
+00666,VILLA ALLENDE,Cordoba
+00667,B° MERCANTIL,Cordoba
+00668,GRANJA DE FUNES,Cordoba
+00669,VILLA BELGRANO,Cordoba
+00670,SANTA CECILIA,Cordoba
+00671,LOS BOULEVARES,Cordoba
+00672,CENTENARIO,Cordoba
+00673,PARQUE CAPITAL,Cordoba
+00674,URCA,Cordoba
+00675,ESCOBAR,Cordoba
+00676,B° VILLA CABRERA,Cordoba
+00677,LAS MARGARITAS,Cordoba
+00678,LA FRANCE,Cordoba
+00679,POETA LUGONES,Cordoba
+00680,GUIÑAZU,Cordoba
+00681,JORGE NEWBERY,Cordoba
+00682,MARQUEZ DE SOBREMONTE,Cordoba
+00683,LOS PARAISOS,Cordoba
+00684,SAN MARTIN - CDBA.-,Cordoba
+00685,PUEYRREDON,Cordoba
+00686,LA PROVIDENCIA,Cordoba
+00687,COFICO,Cordoba
+00688,ZONA NORTE -ALTA CORDOBA,Cordoba
+00689,PANAMERICANO,Cordoba
+00690,VILLA GRAN PARQUE,Cordoba
+00691,EL GATEADO,Cordoba
+00692,B° PARQUE LICEO,Cordoba
+00693,VILLA REVOL,Cordoba
+00694,CHACHAPOYAS,Cordoba
+00695,SAN JORGE,Cordoba
+00696,LA DOROTEA,Cordoba
+00697,ARENALES,Cordoba
+00698,AYACUCHO,Cordoba
+00699,VILLA AZALAIS,Cordoba
+00700,PATRICIO PALMERO,Cordoba
+00701,GENERAL BUSTOS,Cordoba
+00702,LEANDRO N ALEM,Cordoba
+00703,NUEVA ITALIA,Cordoba
+00704,ELIAS YOFRE,Cordoba
+00705,VALLE ESCONDIDO,Cordoba
+00706,QUEBRADA LAS ROSAS,Cordoba
+00707,DON BOSCO,Cordoba
+00708,JUSTO JOSE URQUIZA,Cordoba
+00709,BARRIO CENTRO,Cordoba
+00710,MICROCENTRO,Cordoba
+00711,RESIDENCIAL SAN ROQUE,Cordoba
+00712,SANTA ANA,Cordoba
+00713,CONCEPCION,Corrientes
+00714,CAPITAN SOLARI,Chaco
+00715,LIBERTADOR SAN MARTIN,Entre Rios
+00717,TACOPOZO,Chaco
+00718,LARROQUE,Entre Rios
+00719,VIREYES PARTIDO DE SAN FERNANDO,Buenos Aires
+00720,SAN CARLOS,Misiones
+00721,GUADALUPE NORTE,Santa Fe
+00722,PUEBLO LIBERTADOR,Corrientes
+02930,SAN PEDRO,Buenos Aires
+03085,PILAR,Santa Fe
+05001,BAHIA BLANCA,Buenos Aires
+05002,LAS GARCITAS,Chaco
+08332,GENERAL ROCA,Rio Negro
+08333,LA PICADA,Entre Rios
+08334,COLONIA CARLOS PELLEGRINI CTES,Corrientes
+08335,INTERIOR DE FORMOSA REGION 2,Formosa
+08336,SAN CAYETANO,Corrientes
+08337,LA CRUZ,Corrientes
+08338,FORMOSA SOLO PARA SYNERLOGIC/ TELECOM,Formosa
+08339,SANTA ELENA,Entre Rios
+08340,LAS GARZAS,Santa Fe
+08341,COLONIA PASTORIL,Formosa
+99998,COLONIA M MAGDALENA,Misiones
+99999,BASAVILBASO,Entre Rios
