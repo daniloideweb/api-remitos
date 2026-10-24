@@ -1,87 +1,206 @@
 import os
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from pydantic import BaseModel, Field
-from typing import Optional
-import google.generativeai as genai
-from PIL import Image
+import re
 import io
+import json
+import time
+import requests
+from PIL import Image, ImageOps
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from google import genai
+from google.genai import types
 
-# Inicializar la API de Gemini con la clave del entorno
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("No se encontró la variable de entorno GEMINI_API_KEY")
+app = FastAPI(
+    title="API Extracción de Remitos Raosa",
+    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
+    version="2.5.0"
+)
 
-genai.configure(api_key=GEMINI_API_KEY)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-app = FastAPI(title="API Remitos Raosa", version="2.0")
+# Inicializa cliente de Gemini con la variable de entorno GEMINI_API_KEY
+client = genai.Client()
 
-# Esquema Pydantic optimizado para minimizar tokens de salida
-class Remitente(BaseModel):
-    rs: Optional[str] = Field(None, description="Razón social del remitente")
-    cuit: Optional[str] = Field(None, description="CUIT del remitente")
-    dom: Optional[str] = Field(None, description="Domicilio del remitente")
-    loc: Optional[str] = Field(None, description="Localidad del remitente")
-    prov: Optional[str] = Field(None, description="Provincia del remitente")
-    tel: Optional[str] = Field(None, description="Teléfono del remitente")
-    email: Optional[str] = Field(None, description="Correo electrónico del remitente")
+class RemitoRequest(BaseModel):
+    archivo_url: str = Field(..., description="URL de Google Drive del remito")
 
-class Destinatario(BaseModel):
-    rs: Optional[str] = Field(None, description="Razón social del destinatario")
-    cuit: Optional[str] = Field(None, description="CUIT del destinatario")
-    dom: Optional[str] = Field(None, description="Domicilio del destinatario")
-    loc: Optional[str] = Field(None, description="Localidad del destinatario")
-    prov: Optional[str] = Field(None, description="Provincia del destinatario")
-    tel: Optional[str] = Field(None, description="Teléfono del destinatario")
-    email: Optional[str] = Field(None, description="Correo electrónico del destinatario")
 
-class Comprobante(BaseModel):
-    tipo: Optional[str] = Field("REMITO", description="Tipo de comprobante")
-    nro: Optional[str] = Field(None, description="Número de remito en formato continuo de 12 dígitos sin guiones: 4 de punto de venta y 8 de número (ej: 000100047496)")
-    val_decl: Optional[float] = Field(None, description="Valor declarado")
+def obtener_id_drive(url: str) -> str:
+    """Extrae el ID del archivo de cualquier formato de enlace de Google Drive."""
+    match = re.search(r"/d/([a-zA-Z0-9_-]+)", url)
+    if match:
+        return match.group(1)
+    match = re.search(r"id=([a-zA-Z0-9_-]+)", url)
+    if match:
+        return match.group(1)
+    return url
 
-class Flete(BaseModel):
-    cond_pago: Optional[str] = Field(None, description="Condición de pago")
-    cr: Optional[bool] = Field(False, description="Contrariareembolso True o False")
-    monto_cr: Optional[float] = Field(None, description="Monto de contrarreembolso")
 
-class RemitoResponse(BaseModel):
-    rem: Remitente
-    dest: Destinatario
-    comprob: Comprobante
-    flete: Flete
-
-@app.post("/procesar-remito", response_model=RemitoResponse)
-async def procesar_remito(file: UploadFile = File(...)):
+def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
+    """Corrige la orientación física y metadatos EXIF de la imagen."""
+    if not mime_type.startswith("image/"):
+        return file_bytes, mime_type
     try:
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
-        
-        # Usar el modelo gemini-3.6-flash para extracción veloz y económica
-        model = genai.GenerativeModel('gemini-3.6-flash')
-        
-        prompt = (
-            "Extrae los datos de este remito respetando estrictamente la estructura solicitada. "
-            "El número de remito ('nro') debe unirse en un solo bloque de 12 dígitos sin guiones "
-            "(4 dígitos para punto de venta y 8 para el número, rellenando con ceros a la izquierda si es necesario, ej: 000100047496). "
-            "No incluyas fecha, códigos postales, datos de carga, observaciones ni totales de flete."
-        )
-        
-        response = model.generate_content(
-            [image, prompt],
-            generation_config=genai.types.GenerationConfig(
-                response_mime_type="application/json",
-                response_schema=RemitoResponse,
-                temperature=0.1
-            )
-        )
-        
-        import json
-        data = json.loads(response.text)
-        return data
+        img = Image.open(io.BytesIO(file_bytes))
+        img = ImageOps.exif_transpose(img)
+        buffer = io.BytesIO()
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.save(buffer, format="JPEG", quality=90)
+        return buffer.getvalue(), "image/jpeg"
+    except Exception:
+        return file_bytes, mime_type
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
+    """Descarga el archivo real omitiendo previsualizaciones intermedias."""
+    file_id = obtener_id_drive(url)
+    session = requests.Session()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+
+    alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
+    res = session.get(alt_url, headers=headers, timeout=25)
+
+    if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
+        download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
+        res = session.get(download_url, headers=headers, timeout=25)
+        if "confirm=" in res.text:
+            token = re.search(r"confirm=([0-9A-Za-z_]+)", res.text)
+            if token:
+                res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=25)
+
+    if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso en 'Cualquier persona con el enlace'."
+        )
+
+    content_type = res.headers.get("Content-Type", "").lower()
+    if res.content.startswith(b"%PDF") or "pdf" in content_type:
+        mime_type = "application/pdf"
+    elif res.content.startswith(b"\x89PNG") or "png" in content_type:
+        mime_type = "image/png"
+    else:
+        mime_type = "image/jpeg"
+
+    clean_bytes, clean_mime = normalizar_imagen(res.content, mime_type)
+    return clean_bytes, clean_mime
+
+
+def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
+    prompt_instrucciones = """
+    Sos un experto liquidador y auditor documental de empresas de transporte de cargas y encomiendas.
+
+    INSTRUCCIÓN DE LECTURA Y ORIENTACIÓN:
+    La imagen puede estar invertida (de cabeza), rotada o inclinada. Antes de extraer los datos, determina la orientación correcta del comprobante.
+
+    REGLAS DE EXTRACCIÓN Y FORMATO:
+    - Extrae con total precisión la información del remitente, destinatario, comprobante y flete.
+    - Incluye las direcciones de correo electrónico tanto de remitente ('email') como de destinatario ('email') si figuran en el documento.
+    - El número del comprobante ('nro') debe unirse estrictamente en un solo bloque continuo de 12 dígitos sin guiones (4 dígitos para punto de venta y 8 para el número, rellenando con ceros a la izquierda si es necesario, por ejemplo: 000100047496).
+    - EXCLUYE completamente: fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
+
+    Estructura JSON estricta requerida:
+    {
+      "rem": {
+        "rs": str o null,
+        "cuit": str o null,
+        "dom": str o null,
+        "loc": str o null,
+        "prov": str o null,
+        "tel": str o null,
+        "email": str o null
+      },
+      "dest": {
+        "rs": str o null,
+        "cuit": str o null,
+        "dom": str o null,
+        "loc": str o null,
+        "prov": str o null,
+        "tel": str o null,
+        "email": str o null
+      },
+      "comprob": {
+        "tipo": str o null,
+        "nro": str o null,
+        "val_decl": float o null
+      },
+      "flete": {
+        "cond_pago": str o null,
+        "cr": bool,
+        "monto_cr": float o null
+      }
+    }
+
+    Responde ÚNICAMENTE el JSON crudo respetando exactamente estas claves abreviadas, sin bloques markdown adicionales.
+    """
+
+    part_archivo = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+    part_texto = types.Part.from_text(text=prompt_instrucciones)
+    contenido = types.Content(role="user", parts=[part_archivo, part_texto])
+
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json"
+    )
+
+    max_intentos = 4
+    ultimo_error = None
+
+    for intento in range(max_intentos):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=[contenido],
+                config=config
+            )
+            return json.loads(response.text.strip())
+        except Exception as e:
+            ultimo_error = str(e)
+            
+            if any(err in ultimo_error for err in ["429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE"]):
+                espera = 4.0
+                match_delay = re.search(r"retryDelay':\s*'(\d+)", ultimo_error)
+                if match_delay:
+                    espera = float(match_delay.group(1)) + 1.0
+                else:
+                    match_sec = re.search(r"retry in (\d+(?:\.\d+)?)s", ultimo_error)
+                    if match_sec:
+                        espera = float(match_sec.group(1)) + 1.0
+
+                time.sleep(espera)
+                continue
+
+            break
+
+    raise HTTPException(
+        status_code=500,
+        detail=f"Error en el procesamiento de visión/IA: {ultimo_error}"
+    )
+
 
 @app.get("/")
-def read_root():
-    return {"status": "API Remitos Raosa activa y operando"}
+def home():
+    return {"status": "online", "service": "API Remitos Raosa"}
+
+
+@app.get("/procesar-remito")
+@app.get("/procesar-remito/")
+def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive del remito")):
+    file_bytes, mime_type = descargar_archivo_drive(archivo_url)
+    return procesar_con_gemini(file_bytes, mime_type)
+
+
+@app.post("/procesar-remito")
+@app.post("/procesar-remito/")
+def procesar_remito_post(payload: RemitoRequest):
+    file_bytes, mime_type = descargar_archivo_drive(payload.archivo_url)
+    return procesar_con_gemini(file_bytes, mime_type)
