@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.6.0"
+    version="2.7.0"
 )
 
 app.add_middleware(
@@ -104,7 +104,8 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     La imagen puede estar invertida o rotada. Determina la orientación correcta antes de extraer los datos.
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
-    - Remitente y Destinatario: Extrae razón social, CUIT, domicilio, localidad, provincia, teléfono y correo electrónico ('email') si figura.
+    - Remitente y Destinatario: Extrae razón social, domicilio, localidad, provincia, teléfono y correo electrónico ('email') si figura.
+    - CUIT / DNI: El campo 'cuit' debe extraerse estrictamente SIN guiones ni separadores. Si es una empresa u organismo, contendrá 11 dígitos juntos (ej: 30500810874); si es un particular y solo figura DNI, contendrá los 8 dígitos juntos.
     - Comprobante: Extrae el número de remito ('nro') unificado estrictamente en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para el número, rellenando con ceros a la izquierda si hace falta, ej: 000100047496) y el valor declarado ('val_decl').
     - Flete: Determina la condición de pago ('cond_pago') la cual debe ser obligatoriamente 'ORIGEN' (si paga el remitente) o 'DESTINO' (si paga el destinatario).
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
