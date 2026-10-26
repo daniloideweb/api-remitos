@@ -4,7 +4,7 @@ import io
 import json
 import time
 import requests
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageChops
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -13,8 +13,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos Raosa",
-    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.12.0"
+    description="Servicio de visión e IA altamente optimizado para digitalizar comprobantes de carga.",
+    version="2.13.0"
 )
 
 app.add_middleware(
@@ -27,7 +27,7 @@ app.add_middleware(
 
 client = genai.Client()
 
-# Cargar el listado oficial de localidades directamente desde el archivo emi_loca.txt
+# Cargar el listado oficial de localidades desde emi_loca.txt
 def cargar_localidades() -> str:
     try:
         ruta_archivo = os.path.join(os.path.dirname(__file__), "emi_loca.txt")
@@ -55,19 +55,35 @@ def obtener_id_drive(url: str) -> str:
 
 
 def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
+    """
+    Optimiza el consumo de tokens de entrada:
+    1. Corrige orientación EXIF.
+    2. Recorta bordes blancos e inútiles (Autotrim).
+    3. Redimensiona a máximo 800px preservando legibilidad.
+    4. Comprime a JPEG calidad 80.
+    """
     if not mime_type.startswith("image/"):
         return file_bytes, mime_type
     try:
         img = Image.open(io.BytesIO(file_bytes))
         img = ImageOps.exif_transpose(img)
         
-        # Reducción inteligente de resolución (máximo 1024x1024 manteniendo aspecto) para reducir tokens
-        img.thumbnail((1024, 1024))
-        
-        buffer = io.BytesIO()
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
-        img.save(buffer, format="JPEG", quality=85)
+
+        # Autotrim: Recorte inteligente de márgenes/fondos excesivamente claros
+        bg = Image.new(img.mode, img.size, (255, 255, 255))
+        diff = ImageChops.difference(img, bg)
+        diff = ImageChops.add(diff, diff, 2.0, -100)
+        bbox = diff.getbbox()
+        if bbox:
+            img = img.crop(bbox)
+
+        # Reducción óptima a 800px para minimizar grilla de píxeles/tokens
+        img.thumbnail((800, 800))
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=80, optimize=True)
         return buffer.getvalue(), "image/jpeg"
     except Exception:
         return file_bytes, mime_type
@@ -120,17 +136,17 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     {LISTADO_LOCALIDADES}
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
-    - Remitente y Destinatario: Extrae razón social, domicilio, localidad ('loc'), provincia ('prov'), teléfono ('tel') y correo electrónico ('email') si figura.
-    - Código de Localidad ('cod_loc'): Busca la localidad extraída en el Listado Oficial provisto arriba y asigna estrictamente el código numérico correspondiente (ej: "00001", "00023"). Si no se encuentra en la lista, coloca null.
-    - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas u organismos, 8 dígitos para DNI de particulares).
-    - Comprobante: Extrae el número de remito ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para el número, ej: 000300000587) y el valor declarado ('val_decl').
+    - Remitente y Destinatario: Extrae razón social ('rs'), domicilio ('dom'), localidad ('loc'), provincia ('prov'), teléfono ('tel') y correo electrónico ('email') si figura. Si un dato no existe, coloca null de forma explícita.
+    - Código de Localidad ('cod_loc'): Busca la localidad extraída en el Listado Oficial provisto arriba y asigna estrictamente el código numérico correspondiente (ej: "00001", "00051"). Si no se encuentra en la lista, coloca null.
+    - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
+    - Comprobante: Extrae el número de remito ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número, ej: 000000003178) y el valor declarado ('val_decl'). Si no existe, null.
     - Flete:
-      * 'cond_pago': 'ORIGEN' o 'DESTINO' únicamente si está explícitamente indicado en el comprobante (sellos, etiquetas o impreso). De lo contrario, null.
+      * 'cond_pago': 'ORIGEN' o 'DESTINO' únicamente si está explícitamente indicado en el comprobante. De lo contrario, null.
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
 
-    Estructura JSON estricta requerida:
+    Estructura JSON ESTRICTA Y FIJA (Mantener siempre todas las claves devolviendo null si están vacías):
     {{
       "rem": {{
         "rs": str o null,
@@ -163,7 +179,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
       }}
     }}
 
-    Responde ÚNICAMENTE el JSON crudo respetando exactamente estas claves abreviadas, sin bloques markdown adicionales.
+    Responde ÚNICAMENTE el JSON crudo respetando exactamente esta estructura completa, sin bloques markdown ni texto adicional.
     """
 
     part_archivo = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
@@ -211,7 +227,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
 
 @app.get("/")
 def home():
-    return {"status": "online", "service": "API Remitos Raosa"}
+    return {"status": "online", "service": "API Remitos Raosa (Ultra-Optimized)"}
 
 
 @app.get("/procesar-remito")
