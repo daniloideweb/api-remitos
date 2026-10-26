@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y remitos.",
-    version="2.11.0"
+    version="2.12.0"
 )
 
 app.add_middleware(
@@ -36,7 +36,7 @@ def cargar_localidades() -> str:
                 return f.read()
     except Exception:
         pass
-    return "00001 CORRIENTES CAPITAL - Corrientes"
+    return "00001,CORRIENTES CAPITAL,Corrientes"
 
 LISTADO_LOCALIDADES = cargar_localidades()
 
@@ -60,10 +60,14 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
     try:
         img = Image.open(io.BytesIO(file_bytes))
         img = ImageOps.exif_transpose(img)
+        
+        # Reducción inteligente de resolución (máximo 1024x1024 manteniendo aspecto) para reducir tokens
+        img.thumbnail((1024, 1024))
+        
         buffer = io.BytesIO()
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
-        img.save(buffer, format="JPEG", quality=90)
+        img.save(buffer, format="JPEG", quality=85)
         return buffer.getvalue(), "image/jpeg"
     except Exception:
         return file_bytes, mime_type
