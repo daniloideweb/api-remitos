@@ -13,8 +13,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas con regla impositiva de subtotal.",
-    version="2.14.0"
+    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas.",
+    version="2.15.0"
 )
 
 app.add_middleware(
@@ -136,8 +136,8 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     {LISTADO_LOCALIDADES}
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
-    - Remitente y Destinatario: Extrae razón social ('rs'), domicilio ('dom'), localidad ('loc'), provincia ('prov'), teléfono ('tel') y correo electrónico ('email') si figura. Si un dato no existe, coloca null de forma explícita.
-    - Código de Localidad ('cod_loc'): Busca la localidad extraída en el Listado Oficial provisto arriba y asigna estrictamente el código numérico correspondiente (ej: "00001", "00051"). Si no se encuentra en la lista, coloca null.
+    - Remitente y Destinatario: Extrae razón social ('rs'), domicilio ('dom'), teléfono ('tel') y correo electrónico ('email') si figura. Si un dato no existe, coloca null de forma explícita. No extraigas ni incluyas texto de localidad ni de provincia.
+    - Código de Localidad ('cod_loc'): Identifica la localidad y provincia en el documento, búscala en el Listado Oficial provisto arriba y asigna estrictamente el código numérico correspondiente (ej: "00001", "00051"). Si no se encuentra en la lista o no figura, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
     - Comprobante: Extrae el número de remito o factura ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número, ej: 000000003178).
     - Valor Declarado ('val_decl'): 
@@ -155,9 +155,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "rs": str o null,
         "cuit": str o null,
         "dom": str o null,
-        "loc": str o null,
         "cod_loc": str o null,
-        "prov": str o null,
         "tel": str o null,
         "email": str o null
       }},
@@ -165,9 +163,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "rs": str o null,
         "cuit": str o null,
         "dom": str o null,
-        "loc": str o null,
         "cod_loc": str o null,
-        "prov": str o null,
         "tel": str o null,
         "email": str o null
       }},
