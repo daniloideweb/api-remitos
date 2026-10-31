@@ -12,9 +12,9 @@ from google import genai
 from google.genai import types
 
 app = FastAPI(
-    title="API Extracción de Remitos Raosa",
-    description="Servicio de visión e IA altamente optimizado para digitalizar comprobantes de carga.",
-    version="2.13.0"
+    title="API Extracción de Remitos y Facturas Raosa",
+    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas con regla impositiva de subtotal.",
+    version="2.14.0"
 )
 
 app.add_middleware(
@@ -41,7 +41,7 @@ def cargar_localidades() -> str:
 LISTADO_LOCALIDADES = cargar_localidades()
 
 class RemitoRequest(BaseModel):
-    archivo_url: str = Field(..., description="URL de Google Drive del remito")
+    archivo_url: str = Field(..., description="URL de Google Drive del comprobante")
 
 
 def obtener_id_drive(url: str) -> str:
@@ -139,12 +139,15 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     - Remitente y Destinatario: Extrae razón social ('rs'), domicilio ('dom'), localidad ('loc'), provincia ('prov'), teléfono ('tel') y correo electrónico ('email') si figura. Si un dato no existe, coloca null de forma explícita.
     - Código de Localidad ('cod_loc'): Busca la localidad extraída en el Listado Oficial provisto arriba y asigna estrictamente el código numérico correspondiente (ej: "00001", "00051"). Si no se encuentra en la lista, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
-    - Comprobante: Extrae el número de remito ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número, ej: 000000003178) y el valor declarado ('val_decl'). Si no existe, null.
+    - Comprobante: Extrae el número de remito o factura ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número, ej: 000000003178).
+    - Valor Declarado ('val_decl'): 
+      * Si el comprobante es un remito, extrae el valor declarado que figure en el mismo.
+      * Si el comprobante es una factura y los impuestos se encuentran discriminados, extrae **únicamente el subtotal sin impuestos (neto gravado)**, excluyendo el IVA y cualquier otro recargo impositivo. Si no existe, coloca null.
     - Flete:
       * 'cond_pago': 'ORIGEN' o 'DESTINO' únicamente si está explícitamente indicado en el comprobante. De lo contrario, null.
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
-    - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del remito, códigos postales, datos de carga, observaciones y total de flete.
+    - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del comprobante, códigos postales, datos de carga, observaciones y total general de la factura.
 
     Estructura JSON ESTRICTA Y FIJA (Mantener siempre todas las claves devolviendo null si están vacías):
     {{
@@ -227,12 +230,12 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
 
 @app.get("/")
 def home():
-    return {"status": "online", "service": "API Remitos Raosa (Ultra-Optimized)"}
+    return {"status": "online", "service": "API Remitos y Facturas Raosa"}
 
 
 @app.get("/procesar-remito")
 @app.get("/procesar-remito/")
-def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive del remito")):
+def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive del comprobante")):
     file_bytes, mime_type = descargar_archivo_drive(archivo_url)
     return procesar_con_gemini(file_bytes, mime_type)
 
