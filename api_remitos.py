@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas.",
-    version="2.15.0"
+    version="2.16.0"
 )
 
 app.add_middleware(
@@ -144,7 +144,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
       * Si el comprobante es un remito, extrae el valor declarado que figure en el mismo.
       * Si el comprobante es una factura y los impuestos se encuentran discriminados, extrae **únicamente el subtotal sin impuestos (neto gravado)**, excluyendo el IVA y cualquier otro recargo impositivo. Si no existe, coloca null.
     - Flete:
-      * 'cond_pago': 'ORIGEN' o 'DESTINO' únicamente si está explícitamente indicado en el comprobante. De lo contrario, null.
+      * 'cond_pago': Extrae 'ORIGEN' o 'DESTINO' según corresponda en el comprobante. Si no se detecta o no está explícitamente indicado, define por defecto **'DESTINO'**.
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del comprobante, códigos postales, datos de carga, observaciones y total general de la factura.
@@ -172,7 +172,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "val_decl": float o null
       }},
       "flete": {{
-        "cond_pago": str o null,
+        "cond_pago": str,
         "cr": bool,
         "monto_cr": float o null
       }}
