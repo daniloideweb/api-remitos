@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas.",
-    version="2.16.0"
+    version="2.17.0"
 )
 
 app.add_middleware(
@@ -136,15 +136,17 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     {LISTADO_LOCALIDADES}
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
-    - Remitente y Destinatario: Extrae razón social ('rs'), domicilio ('dom'), teléfono ('tel') y correo electrónico ('email') si figura. Si un dato no existe, coloca null de forma explícita. No extraigas ni incluyas texto de localidad ni de provincia.
-    - Código de Localidad ('cod_loc'): Identifica la localidad y provincia en el documento, búscala en el Listado Oficial provisto arriba y asigna estrictamente el código numérico correspondiente (ej: "00001", "00051"). Si no se encuentra en la lista o no figura, coloca null.
+    - Remitente y Destinatario: 
+      * Extrae razón social ('rs'), domicilio ('dom') y correo electrónico ('email') si figura. Si un dato no existe, coloca null. No extraigas texto de localidad ni provincia.
+      * Teléfono ('tel'): Extrae **un único** número telefónico. Si hay varios números en el comprobante, prioriza el que corresponda a celular. Separa estrictamente el prefijo de área (sin el 0 inicial ni símbolos) en 'prefijo' y el número restante en 'numero'. Si no existe teléfono, ambos campos deben ser null.
+    - Código de Localidad ('cod_loc'): Identifica la localidad y provincia, búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
-    - Comprobante: Extrae el número de remito o factura ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número, ej: 000000003178).
+    - Comprobante: Extrae el número de remito o factura ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número).
     - Valor Declarado ('val_decl'): 
-      * Si el comprobante es un remito, extrae el valor declarado que figure en el mismo.
-      * Si el comprobante es una factura y los impuestos se encuentran discriminados, extrae **únicamente el subtotal sin impuestos (neto gravado)**, excluyendo el IVA y cualquier otro recargo impositivo. Si no existe, coloca null.
+      * Si el comprobante es un remito, extrae el valor declarado.
+      * Si el comprobante es una factura y los impuestos están discriminados, extrae **únicamente el subtotal sin impuestos (neto gravado)**, excluyendo IVA u otros recargos. Si no existe, coloca null.
     - Flete:
-      * 'cond_pago': Extrae 'ORIGEN' o 'DESTINO' según corresponda en el comprobante. Si no se detecta o no está explícitamente indicado, define por defecto **'DESTINO'**.
+      * 'cond_pago': Extrae 'ORIGEN' o 'DESTINO'. Si no se detecta o no está indicado, define por defecto **'DESTINO'**.
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del comprobante, códigos postales, datos de carga, observaciones y total general de la factura.
@@ -156,7 +158,10 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "cuit": str o null,
         "dom": str o null,
         "cod_loc": str o null,
-        "tel": str o null,
+        "tel": {{
+          "prefijo": str o null,
+          "numero": str o null
+        }},
         "email": str o null
       }},
       "dest": {{
@@ -164,7 +169,10 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         "cuit": str o null,
         "dom": str o null,
         "cod_loc": str o null,
-        "tel": str o null,
+        "tel": {{
+          "prefijo": str o null,
+          "numero": str o null
+        }},
         "email": str o null
       }},
       "comprob": {{
