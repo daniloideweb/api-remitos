@@ -14,7 +14,7 @@ from google.genai import types
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas.",
-    version="2.17.0"
+    version="2.18.0"
 )
 
 app.add_middleware(
@@ -138,7 +138,10 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     REGLAS DE EXTRACCIÓN Y FORMATO:
     - Remitente y Destinatario: 
       * Extrae razón social ('rs'), domicilio ('dom') y correo electrónico ('email') si figura. Si un dato no existe, coloca null. No extraigas texto de localidad ni provincia.
-      * Teléfono ('tel'): Extrae **un único** número telefónico. Si hay varios números en el comprobante, prioriza el que corresponda a celular. Separa estrictamente el prefijo de área (sin el 0 inicial ni símbolos) en 'prefijo' y el número restante en 'numero'. Si no existe teléfono, ambos campos deben ser null.
+      * Teléfono ('tel'): Extrae **un único** número telefónico. Prioriza el que corresponda a celular si hay varios. 
+        - 'prefijo': Código de área estrictamente **sin el 0 inicial** (ej: 379 en vez de 0379).
+        - 'numero': Número de abonado. Si es celular, remueve obligatoriamente el prefijo móvil interno **15** si estuviese presente (ej: 4455667 en vez de 154455667). 
+        - Si no existe teléfono, ambos campos deben ser null.
     - Código de Localidad ('cod_loc'): Identifica la localidad y provincia, búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
     - Comprobante: Extrae el número de remito o factura ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número).
