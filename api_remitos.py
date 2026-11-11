@@ -15,8 +15,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas con métricas de uso.",
-    version="2.19.0"
+    description="Servicio de visión e IA con persistencia automática en Google Sheets y métricas de uso.",
+    version="2.20.0"
 )
 
 app.add_middleware(
@@ -29,12 +29,33 @@ app.add_middleware(
 
 client = genai.Client()
 
+# URL del Webhook de Google Apps Script vinculado a tu planilla de auditoría
+WEBHOOK_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
+
 # Registro en memoria para el conteo de llamados diarios (clave: "YYYY-MM-DD")
 registro_llamados = defaultdict(int)
 
 def registrar_llamado():
     hoy = datetime.now().strftime("%Y-%m-%d")
     registro_llamados[hoy] += 1
+
+def enviar_a_google_sheets(resultado_ia: dict):
+    """
+    Envía de forma asíncrona o directa los datos clave del comprobante procesado
+    hacia la planilla de Google Sheets sin bloquear la respuesta de la API.
+    """
+    try:
+        payload = {
+            "comprobante": resultado_ia.get("comprob", {}).get("nro"),
+            "remitente": resultado_ia.get("rem", {}).get("rs"),
+            "destinatario": resultado_ia.get("dest", {}).get("rs"),
+            "flete": resultado_ia.get("flete", {}).get("cond_pago")
+        }
+        # Petición POST al webhook de Apps Script (timeout corto para no afectar rendimiento)
+        requests.post(WEBHOOK_SHEETS_URL, json=payload, timeout=5)
+    except Exception:
+        # Si ocurre algún fallo de red con Google, la API principal no se interrumpe
+        pass
 
 # Cargar el listado oficial de localidades desde emi_loca.txt
 def cargar_localidades() -> str:
@@ -217,7 +238,12 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 contents=[contenido],
                 config=config
             )
-            return json.loads(response.text.strip())
+            resultado_json = json.loads(response.text.strip())
+            
+            # Registramos y enviamos los datos en segundo plano hacia Google Sheets
+            enviar_a_google_sheets(resultado_json)
+            
+            return resultado_json
         except Exception as e:
             ultimo_error = str(e)
             
@@ -229,7 +255,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 else:
                     match_sec = re.search(r"retry in (\d+(?:\.\d+)?)s", ultimo_error)
                     if match_sec:
-                        espera = float(match_sec.get(1)) + 1.0
+                        espera = float(match_sec.group(1)) + 1.0
 
                 time.sleep(espera)
                 continue
