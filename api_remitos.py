@@ -3,6 +3,8 @@ import re
 import io
 import json
 import time
+from datetime import datetime
+from collections import defaultdict
 import requests
 from PIL import Image, ImageOps, ImageChops
 from fastapi import FastAPI, Query, HTTPException
@@ -13,8 +15,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas.",
-    version="2.18.0"
+    description="Servicio de visión e IA optimizado para digitalizar comprobantes de carga y facturas con métricas de uso.",
+    version="2.19.0"
 )
 
 app.add_middleware(
@@ -26,6 +28,13 @@ app.add_middleware(
 )
 
 client = genai.Client()
+
+# Registro en memoria para el conteo de llamados diarios (clave: "YYYY-MM-DD")
+registro_llamados = defaultdict(int)
+
+def registrar_llamado():
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    registro_llamados[hoy] += 1
 
 # Cargar el listado oficial de localidades desde emi_loca.txt
 def cargar_localidades() -> str:
@@ -71,7 +80,6 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
 
-        # Autotrim: Recorte inteligente de márgenes/fondos excesivamente claros
         bg = Image.new(img.mode, img.size, (255, 255, 255))
         diff = ImageChops.difference(img, bg)
         diff = ImageChops.add(diff, diff, 2.0, -100)
@@ -79,7 +87,6 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         if bbox:
             img = img.crop(bbox)
 
-        # Reducción óptima a 800px para minimizar grilla de píxeles/tokens
         img.thumbnail((800, 800))
         
         buffer = io.BytesIO()
@@ -222,7 +229,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 else:
                     match_sec = re.search(r"retry in (\d+(?:\.\d+)?)s", ultimo_error)
                     if match_sec:
-                        espera = float(match_sec.group(1)) + 1.0
+                        espera = float(match_sec.get(1)) + 1.0
 
                 time.sleep(espera)
                 continue
@@ -240,9 +247,20 @@ def home():
     return {"status": "online", "service": "API Remitos y Facturas Raosa"}
 
 
+@app.get("/estadisticas/diarias")
+def estadisticas_diarias():
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    return {
+        "fecha_actual": hoy,
+        "llamados_hoy": registro_llamados[hoy],
+        "historico_por_dia": dict(registro_llamados)
+    }
+
+
 @app.get("/procesar-remito")
 @app.get("/procesar-remito/")
 def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive del comprobante")):
+    registrar_llamado()
     file_bytes, mime_type = descargar_archivo_drive(archivo_url)
     return procesar_con_gemini(file_bytes, mime_type)
 
@@ -250,5 +268,6 @@ def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive 
 @app.post("/procesar-remito")
 @app.post("/procesar-remito/")
 def procesar_remito_post(payload: RemitoRequest):
+    registrar_llamado()
     file_bytes, mime_type = descargar_archivo_drive(payload.archivo_url)
     return procesar_con_gemini(file_bytes, mime_type)
