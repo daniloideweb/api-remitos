@@ -15,8 +15,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con persistencia automática en Google Sheets y métricas de uso.",
-    version="2.20.0"
+    description="Servicio de visión e IA con persistencia en Google Sheets y datos maestros de redespacho.",
+    version="2.22.0"
 )
 
 app.add_middleware(
@@ -40,10 +40,6 @@ def registrar_llamado():
     registro_llamados[hoy] += 1
 
 def enviar_a_google_sheets(resultado_ia: dict):
-    """
-    Envía de forma asíncrona o directa los datos clave del comprobante procesado
-    hacia la planilla de Google Sheets sin bloquear la respuesta de la API.
-    """
     try:
         payload = {
             "comprobante": resultado_ia.get("comprob", {}).get("nro"),
@@ -51,10 +47,8 @@ def enviar_a_google_sheets(resultado_ia: dict):
             "destinatario": resultado_ia.get("dest", {}).get("rs"),
             "flete": resultado_ia.get("flete", {}).get("cond_pago")
         }
-        # Petición POST al webhook de Apps Script (timeout corto para no afectar rendimiento)
         requests.post(WEBHOOK_SHEETS_URL, json=payload, timeout=5)
     except Exception:
-        # Si ocurre algún fallo de red con Google, la API principal no se interrumpe
         pass
 
 # Cargar el listado oficial de localidades desde emi_loca.txt
@@ -85,13 +79,6 @@ def obtener_id_drive(url: str) -> str:
 
 
 def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
-    """
-    Optimiza el consumo de tokens de entrada:
-    1. Corrige orientación EXIF.
-    2. Recorta bordes blancos e inútiles (Autotrim).
-    3. Redimensiona a máximo 800px preservando legibilidad.
-    4. Comprime a JPEG calidad 80.
-    """
     if not mime_type.startswith("image/"):
         return file_bytes, mime_type
     try:
@@ -165,12 +152,27 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
     - Remitente y Destinatario: 
-      * Extrae razón social ('rs'), domicilio ('dom') y correo electrónico ('email') si figura. Si un dato no existe, coloca null. No extraigas texto de localidad ni provincia.
-      * Teléfono ('tel'): Extrae **un único** número telefónico. Prioriza el que corresponda a celular si hay varios. 
-        - 'prefijo': Código de área estrictamente **sin el 0 inicial** (ej: 379 en vez de 0379).
-        - 'numero': Número de abonado. Si es celular, remueve obligatoriamente el prefijo móvil interno **15** si estuviese presente (ej: 4455667 en vez de 154455667). 
-        - Si no existe teléfono, ambos campos deben ser null.
-    - Código de Localidad ('cod_loc'): Identifica la localidad y provincia, búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
+      * Remitente ('rem'): 
+        Inspecciona el comprobante en busca de sellos o marcas de redespacho. Si detectas alguna de las siguientes empresas, debés asignar **estrictamente** los datos maestros oficiales de nuestra base (reemplazando al cliente original del membrete):
+          1. **EXPRESO LUJAN DE CUYO S.A.** (Sello ovalado/circular rojo):
+             - rs: "EXPRESO LUJAN DE CUYO S.A."
+             - cuit: "30566258869"
+             - dom: "CTC"
+             - cod_loc: "00110"
+          2. **ESA LOGISTICA S.A.** (Sello rectangular "DESPACHO POR CUENTA ESA LOGISTICA S.A."):
+             - rs: "ESA LOGISTICA S.A."
+             - cuit: "30707752250"
+             - dom: "MONTEAGUDO 630"
+             - cod_loc: "00110"
+          3. **ENTREGAR S.A.** (Sello rectangular "CUENTA CORRIENTE ENTREGAR"):
+             - rs: "ENTREGAR S.A."
+             - cuit: "30707123873"
+             - dom: "CORRIENTES Nº 531"
+             - cod_loc: "00110"
+        Si no existe ningún sello de redespacho, extrae los datos habituales del membrete superior del documento.
+        Para el correo ('email') del remitente, extraelo si figura; si no, coloca null.
+      * Teléfono ('tel'): Extrae un único número telefónico priorizando celular ('prefijo' sin el 0 inicial, 'numero' sin el prefijo móvil 15). Si no existe, null.
+    - Código de Localidad ('cod_loc') para el Destinatario: Búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
     - Comprobante: Extrae el número de remito o factura ('nro') en un solo bloque continuo de 12 dígitos sin guiones (4 para punto de venta y 8 para número).
     - Valor Declarado ('val_decl'): 
@@ -239,10 +241,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 config=config
             )
             resultado_json = json.loads(response.text.strip())
-            
-            # Registramos y enviamos los datos en segundo plano hacia Google Sheets
             enviar_a_google_sheets(resultado_json)
-            
             return resultado_json
         except Exception as e:
             ultimo_error = str(e)
