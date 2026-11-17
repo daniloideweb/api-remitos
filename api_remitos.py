@@ -15,8 +15,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con persistencia en Google Sheets y datos maestros de redespacho.",
-    version="2.22.0"
+    description="Servicio de visión e IA con persistencia, datos maestros de redespacho y flete origen por defecto.",
+    version="2.23.0"
 )
 
 app.add_middleware(
@@ -179,7 +179,8 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
       * Si el comprobante es un remito, extrae el valor declarado.
       * Si el comprobante es una factura y los impuestos están discriminados, extrae **únicamente el subtotal sin impuestos (neto gravado)**, excluyendo IVA u otros recargos. Si no existe, coloca null.
     - Flete:
-      * 'cond_pago': Extrae 'ORIGEN' o 'DESTINO'. Si no se detecta o no está indicado, define por defecto **'DESTINO'**.
+      * 'cond_pago': Extrae 'ORIGEN' o 'DESTINO'. 
+        **REGLA CRÍTICA DE REDESPACHO:** Si el comprobante corresponde a un redespacho de **Expreso Luján de Cuyo**, **ESA Logística** o **Entregar**, la condición de pago del flete debe asignarse obligatoriamente como **'ORIGEN'**. En caso contrario, extrae 'ORIGEN' o 'DESTINO' según el documento (si no se detecta o no está indicado, define por defecto 'DESTINO').
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del comprobante, códigos postales, datos de carga, observaciones y total general de la factura.
