@@ -13,10 +13,16 @@ from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 
+try:
+    import fitz  # PyMuPDF para separar/renderizar páginas de PDF
+    HAS_FITZ = True
+except ImportError:
+    HAS_FITZ = False
+
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con consolidación en Python de múltiples remitos, redespacho y persistencia en Sheets.",
-    version="2.26.0"
+    description="Servicio de visión e IA con renderizado PDF página por página, consolidación en Python, redespacho y persistencia en Sheets.",
+    version="2.27.0"
 )
 
 app.add_middleware(
@@ -117,6 +123,35 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         return file_bytes, mime_type
 
 
+def renderizar_pdf_a_imagenes(pdf_bytes: bytes, dpi: int = 160) -> list[tuple[bytes, str]]:
+    """
+    Convierte cada página de un PDF en una imagen JPEG normalizada para que
+    ninguna hoja quede omitida durante el análisis de visión.
+    """
+    if not HAS_FITZ:
+        return [(pdf_bytes, "application/pdf")]
+
+    paginas = []
+    doc = None
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        zoom = dpi / 72.0
+        matriz = fitz.Matrix(zoom, zoom)
+
+        for pagina in doc:
+            pix = pagina.get_pixmap(matrix=matriz, alpha=False)
+            img_bytes = pix.tobytes("jpeg")
+            norm_bytes, norm_mime = normalizar_imagen(img_bytes, "image/jpeg")
+            paginas.append((norm_bytes, norm_mime))
+    except Exception:
+        return [(pdf_bytes, "application/pdf")]
+    finally:
+        if doc is not None:
+            doc.close()
+
+    return paginas if paginas else [(pdf_bytes, "application/pdf")]
+
+
 def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
     file_id = obtener_id_drive(url)
     session = requests.Session()
@@ -163,7 +198,6 @@ def normalizar_nro_12_digitos(nro_raw) -> str | None:
         return digitos
     if len(digitos) < 12:
         return digitos.zfill(12)
-    # Si supera 12 dígitos, tomar los últimos 12 (4 PV + 8 número)
     return digitos[-12:]
 
 
@@ -195,75 +229,19 @@ def parsear_monto(valor) -> float | None:
         return None
 
 
-def consolidar_comprobantes_en_python(resultado_ia: dict) -> dict:
-    """
-    Aplica las reglas de consolidación de forma determinista en Python:
-    - Si hay remitos, descarta por completo las facturas.
-    - Deduplica números de remito normalizados a 12 dígitos.
-    - Asigna el primer remito a 'nro', los siguientes a 'otros_nro' y suma 'val_decl'.
-    """
-    detectados = resultado_ia.get("comprobantes_detectados") or []
-    remitos_validos = []
-    facturas_validas = []
+def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicional: bool = False) -> dict:
+    contexto_hoja = (
+        "Esta es una página adicional de un mismo envío/legajo. Analiza su contenido y extrae los comprobantes presentes."
+        if es_pagina_adicional
+        else "Analiza este comprobante o primera hoja del envío y extrae los datos solicitados."
+    )
 
-    for item in detectados:
-        if not isinstance(item, dict):
-            continue
-        tipo = str(item.get("tipo") or "").strip().upper()
-        nro_norm = normalizar_nro_12_digitos(item.get("nro"))
-        monto = parsear_monto(item.get("valor"))
-
-        if not nro_norm:
-            continue
-
-        entrada = {"nro": nro_norm, "valor": monto}
-        if "REM" in tipo:
-            remitos_validos.append(entrada)
-        elif "FAC" in tipo:
-            facturas_validas.append(entrada)
-
-    seleccionados = remitos_validos if remitos_validos else facturas_validas
-
-    # Fallback por si el modelo no completó comprobantes_detectados
-    if not seleccionados:
-        comprob_previo = resultado_ia.get("comprob") or {}
-        nro_fallback = normalizar_nro_12_digitos(comprob_previo.get("nro"))
-        monto_fallback = parsear_monto(comprob_previo.get("val_decl"))
-        if nro_fallback:
-            seleccionados = [{"nro": nro_fallback, "valor": monto_fallback}]
-
-    vistos = {}
-    for item in seleccionados:
-        nro_actual = item["nro"]
-        valor_actual = item["valor"]
-        if nro_actual not in vistos:
-            vistos[nro_actual] = valor_actual
-        else:
-            if vistos[nro_actual] is None and valor_actual is not None:
-                vistos[nro_actual] = valor_actual
-
-    numeros_unicos = list(vistos.keys())
-    nro_principal = numeros_unicos[0] if numeros_unicos else None
-    otros_nro = numeros_unicos[1:] if len(numeros_unicos) > 1 else []
-
-    valores_numericos = [v for v in vistos.values() if v is not None]
-    total_val_decl = round(sum(valores_numericos), 2) if valores_numericos else None
-
-    resultado_ia["comprob"] = {
-        "nro": nro_principal,
-        "otros_nro": otros_nro,
-        "val_decl": total_val_decl
-    }
-    resultado_ia.pop("comprobantes_detectados", None)
-    return resultado_ia
-
-
-def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     prompt_instrucciones = f"""
     Sos un experto liquidador y auditor documental de Transporte Raosa S.R.L.
+    {contexto_hoja}
 
     INSTRUCCIÓN DE LECTURA Y ORIENTACIÓN:
-    El archivo puede contener una o múltiples páginas/comprobantes, y algunas imágenes pueden estar invertidas o rotadas. Determina la orientación correcta antes de extraer los datos.
+    La imagen puede estar invertida o rotada. Determina la orientación correcta antes de extraer los datos.
 
     LISTADO OFICIAL DE LOCALIDADES Y CÓDIGOS:
     {LISTADO_LOCALIDADES}
@@ -293,13 +271,11 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     - Código de Localidad ('cod_loc') para el Destinatario: Búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
 
-    - Comprobantes en TODAS las páginas ('comprobantes_detectados'):
-      * Recorre **todas y cada una de las páginas** del archivo desde la primera hasta la última. No te detengas en la primera página.
-      * En 'comprobantes_detectados', enumera en orden de aparición cada comprobante encontrado en cada página:
+    - Comprobantes en esta hoja ('comprobantes_detectados'):
+      * Enumera en orden de aparición cada comprobante visible en esta hoja:
         - 'tipo': "REMITO" si es un remito, o "FACTURA" si es una factura.
         - 'nro': Número del comprobante en 12 dígitos continuos sin letras ni guiones (4 dígitos de punto de venta + 8 dígitos de número; ej. de "R00108-00217613" -> "010800217613").
         - 'valor': Si es REMITO, su valor declarado numérico (float). Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float). Si no figura, null.
-      * Si hay remitos y facturas en el legajo, igual listalos todos en 'comprobantes_detectados' con su 'tipo' correcto para que el sistema aplique la prioridad a remitos.
 
     - Flete:
       * 'cond_pago': **SOLO** si se detecta redespacho de **Expreso Luján de Cuyo S.A.**, **ESA Logística S.A.** o **Entregar S.A.**, asigna obligatoriamente `'ORIGEN'`. En los demás casos, extrae `'ORIGEN'` o `'DESTINO'` según figure en el comprobante, o usa `'DESTINO'` por defecto si no está indicado.
@@ -307,7 +283,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: fecha del comprobante, códigos postales, datos de carga, observaciones y total general con impuestos de las facturas.
 
-    Estructura JSON ESTRICTA Y FIJA (Mantener siempre todas las claves devolviendo null o [] según corresponda):
+    Estructura JSON ESTRICTA Y FIJA (Mantener siempre todas las claves devolviendo null si están vacías):
     {{
       "rem": {{
         "rs": str o null,
@@ -338,11 +314,6 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
           "valor": float o null
         }}
       ],
-      "comprob": {{
-        "nro": str o null,
-        "otros_nro": [str],
-        "val_decl": float o null
-      }},
       "flete": {{
         "cond_pago": str,
         "cr": bool,
@@ -353,7 +324,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     Responde ÚNICAMENTE el JSON crudo respetando exactamente esta estructura completa, sin bloques markdown ni texto adicional.
     """
 
-    part_archivo = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+    part_archivo = types.Part.from_bytes(data=part_bytes, mime_type=part_mime)
     part_texto = types.Part.from_text(text=prompt_instrucciones)
     contenido = types.Content(role="user", parts=[part_archivo, part_texto])
 
@@ -364,17 +335,14 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     max_intentos = 4
     ultimo_error = None
 
-    for intento in range(max_intentos):
+    for _ in range(max_intentos):
         try:
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
                 contents=[contenido],
                 config=config
             )
-            resultado_json = json.loads(response.text.strip())
-            resultado_consolidado = consolidar_comprobantes_en_python(resultado_json)
-            enviar_a_google_sheets(resultado_consolidado)
-            return resultado_consolidado
+            return json.loads(response.text.strip())
         except Exception as e:
             ultimo_error = str(e)
 
@@ -397,6 +365,134 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         status_code=500,
         detail=f"Error en el procesamiento de visión/IA: {ultimo_error}"
     )
+
+
+def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
+    """
+    Consolida los datos extraídos de una o múltiples páginas en Python:
+    - Toma el bloque 'rem', 'dest' y 'flete' más completo disponible.
+    - Si hay remitos en cualquier página, descarta por completo las facturas.
+    - Deduplica números de remito normalizados a 12 dígitos.
+    - Asigna el primer remito a 'nro', los demás a 'otros_nro' y suma 'val_decl'.
+    """
+    base_rem = None
+    base_dest = None
+    base_flete = None
+
+    todos_detectados = []
+
+    for res in resultados_por_pagina:
+        if not isinstance(res, dict):
+            continue
+
+        rem_actual = res.get("rem")
+        if isinstance(rem_actual, dict) and rem_actual.get("rs"):
+            if base_rem is None or rem_actual.get("rs") in {
+                "EXPRESO LUJAN DE CUYO S.A.",
+                "ESA LOGISTICA S.A.",
+                "ENTREGAR S.A."
+            }:
+                base_rem = rem_actual
+
+        dest_actual = res.get("dest")
+        if isinstance(dest_actual, dict) and dest_actual.get("rs"):
+            if base_dest is None:
+                base_dest = dest_actual
+
+        flete_actual = res.get("flete")
+        if isinstance(flete_actual, dict):
+            if base_flete is None or flete_actual.get("cond_pago") == "ORIGEN":
+                base_flete = flete_actual
+
+        detectados = res.get("comprobantes_detectados") or []
+        for item in detectados:
+            if isinstance(item, dict):
+                todos_detectados.append(item)
+
+    remitos_validos = []
+    facturas_validas = []
+
+    for item in todos_detectados:
+        tipo = str(item.get("tipo") or "").strip().upper()
+        nro_norm = normalizar_nro_12_digitos(item.get("nro"))
+        monto = parsear_monto(item.get("valor"))
+
+        if not nro_norm:
+            continue
+
+        entrada = {"nro": nro_norm, "valor": monto}
+        if "REM" in tipo:
+            remitos_validos.append(entrada)
+        elif "FAC" in tipo:
+            facturas_validas.append(entrada)
+
+    seleccionados = remitos_validos if remitos_validos else facturas_validas
+
+    vistos = {}
+    for item in seleccionados:
+        nro_actual = item["nro"]
+        valor_actual = item["valor"]
+        if nro_actual not in vistos:
+            vistos[nro_actual] = valor_actual
+        else:
+            if vistos[nro_actual] is None and valor_actual is not None:
+                vistos[nro_actual] = valor_actual
+
+    numeros_unicos = list(vistos.keys())
+    nro_principal = numeros_unicos[0] if numeros_unicos else None
+    otros_nro = numeros_unicos[1:] if len(numeros_unicos) > 1 else []
+
+    valores_numericos = [v for v in vistos.values() if v is not None]
+    total_val_decl = round(sum(valores_numericos), 2) if valores_numericos else None
+
+    return {
+        "rem": base_rem or {
+            "rs": None,
+            "cuit": None,
+            "dom": None,
+            "cod_loc": None,
+            "tel": {"prefijo": None, "numero": None},
+            "email": None
+        },
+        "dest": base_dest or {
+            "rs": None,
+            "cuit": None,
+            "dom": None,
+            "cod_loc": None,
+            "tel": {"prefijo": None, "numero": None},
+            "email": None
+        },
+        "comprob": {
+            "nro": nro_principal,
+            "otros_nro": otros_nro,
+            "val_decl": total_val_decl
+        },
+        "flete": base_flete or {
+            "cond_pago": "DESTINO",
+            "cr": False,
+            "monto_cr": None
+        }
+    }
+
+
+def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
+    if mime_type == "application/pdf":
+        hojas = renderizar_pdf_a_imagenes(file_bytes)
+    else:
+        hojas = [(file_bytes, mime_type)]
+
+    resultados_hojas = []
+    for idx, (hoja_bytes, hoja_mime) in enumerate(hojas):
+        res_hoja = llamar_gemini_una_parte(
+            part_bytes=hoja_bytes,
+            part_mime=hoja_mime,
+            es_pagina_adicional=(idx > 0)
+        )
+        resultados_hojas.append(res_hoja)
+
+    resultado_final = consolidar_resultados_paginas(resultados_hojas)
+    enviar_a_google_sheets(resultado_final)
+    return resultado_final
 
 
 @app.get("/")
