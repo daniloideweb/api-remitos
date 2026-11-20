@@ -15,8 +15,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con consolidación multipágina de remitos, redespacho y persistencia en Sheets.",
-    version="2.25.0"
+    description="Servicio de visión e IA con consolidación en Python de múltiples remitos, redespacho y persistencia en Sheets.",
+    version="2.26.0"
 )
 
 app.add_middleware(
@@ -29,15 +29,17 @@ app.add_middleware(
 
 client = genai.Client()
 
-# URL del Webhook de Google Apps Script vinculado a tu planilla de auditoría
+# URL del Webhook de Google Apps Script vinculado a la planilla de auditoría
 WEBHOOK_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
 
 # Registro en memoria para el conteo de llamados diarios (clave: "YYYY-MM-DD")
 registro_llamados = defaultdict(int)
 
+
 def registrar_llamado():
     hoy = datetime.now().strftime("%Y-%m-%d")
     registro_llamados[hoy] += 1
+
 
 def enviar_a_google_sheets(resultado_ia: dict):
     try:
@@ -59,6 +61,7 @@ def enviar_a_google_sheets(resultado_ia: dict):
     except Exception:
         pass
 
+
 # Cargar el listado oficial de localidades desde emi_loca.txt
 def cargar_localidades() -> str:
     try:
@@ -70,7 +73,9 @@ def cargar_localidades() -> str:
         pass
     return "00001,CORRIENTES CAPITAL,Corrientes"
 
+
 LISTADO_LOCALIDADES = cargar_localidades()
+
 
 class RemitoRequest(BaseModel):
     archivo_url: str = Field(..., description="URL de Google Drive del comprobante")
@@ -148,6 +153,111 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
     return clean_bytes, clean_mime
 
 
+def normalizar_nro_12_digitos(nro_raw) -> str | None:
+    if not nro_raw:
+        return None
+    digitos = re.sub(r"\D", "", str(nro_raw))
+    if not digitos:
+        return None
+    if len(digitos) == 12:
+        return digitos
+    if len(digitos) < 12:
+        return digitos.zfill(12)
+    # Si supera 12 dígitos, tomar los últimos 12 (4 PV + 8 número)
+    return digitos[-12:]
+
+
+def parsear_monto(valor) -> float | None:
+    if valor is None or isinstance(valor, bool):
+        return None
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    texto = re.sub(r"[^\d,.-]", "", texto)
+    if not texto:
+        return None
+    if "," in texto and "." in texto:
+        if texto.rfind(",") > texto.rfind("."):
+            texto = texto.replace(".", "").replace(",", ".")
+        else:
+            texto = texto.replace(",", "")
+    elif "," in texto:
+        partes = texto.split(",")
+        if len(partes[-1]) == 2:
+            texto = texto.replace(".", "").replace(",", ".")
+        else:
+            texto = texto.replace(",", "")
+    try:
+        return float(texto)
+    except ValueError:
+        return None
+
+
+def consolidar_comprobantes_en_python(resultado_ia: dict) -> dict:
+    """
+    Aplica las reglas de consolidación de forma determinista en Python:
+    - Si hay remitos, descarta por completo las facturas.
+    - Deduplica números de remito normalizados a 12 dígitos.
+    - Asigna el primer remito a 'nro', los siguientes a 'otros_nro' y suma 'val_decl'.
+    """
+    detectados = resultado_ia.get("comprobantes_detectados") or []
+    remitos_validos = []
+    facturas_validas = []
+
+    for item in detectados:
+        if not isinstance(item, dict):
+            continue
+        tipo = str(item.get("tipo") or "").strip().upper()
+        nro_norm = normalizar_nro_12_digitos(item.get("nro"))
+        monto = parsear_monto(item.get("valor"))
+
+        if not nro_norm:
+            continue
+
+        entrada = {"nro": nro_norm, "valor": monto}
+        if "REM" in tipo:
+            remitos_validos.append(entrada)
+        elif "FAC" in tipo:
+            facturas_validas.append(entrada)
+
+    seleccionados = remitos_validos if remitos_validos else facturas_validas
+
+    # Fallback por si el modelo no completó comprobantes_detectados
+    if not seleccionados:
+        comprob_previo = resultado_ia.get("comprob") or {}
+        nro_fallback = normalizar_nro_12_digitos(comprob_previo.get("nro"))
+        monto_fallback = parsear_monto(comprob_previo.get("val_decl"))
+        if nro_fallback:
+            seleccionados = [{"nro": nro_fallback, "valor": monto_fallback}]
+
+    vistos = {}
+    for item in seleccionados:
+        nro_actual = item["nro"]
+        valor_actual = item["valor"]
+        if nro_actual not in vistos:
+            vistos[nro_actual] = valor_actual
+        else:
+            if vistos[nro_actual] is None and valor_actual is not None:
+                vistos[nro_actual] = valor_actual
+
+    numeros_unicos = list(vistos.keys())
+    nro_principal = numeros_unicos[0] if numeros_unicos else None
+    otros_nro = numeros_unicos[1:] if len(numeros_unicos) > 1 else []
+
+    valores_numericos = [v for v in vistos.values() if v is not None]
+    total_val_decl = round(sum(valores_numericos), 2) if valores_numericos else None
+
+    resultado_ia["comprob"] = {
+        "nro": nro_principal,
+        "otros_nro": otros_nro,
+        "val_decl": total_val_decl
+    }
+    resultado_ia.pop("comprobantes_detectados", None)
+    return resultado_ia
+
+
 def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     prompt_instrucciones = f"""
     Sos un experto liquidador y auditor documental de Transporte Raosa S.R.L.
@@ -183,19 +293,19 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     - Código de Localidad ('cod_loc') para el Destinatario: Búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
 
-    - Comprobantes ('comprob') y Valor Declarado ('val_decl') — REGLA DE MÚLTIPLES PÁGINAS Y REMITOS:
-      * Recorre **todas las páginas** del archivo de principio a fin antes de generar el JSON. No te detengas en la primera hoja.
-      * **Prioridad exclusiva a Remitos:** Si el archivo contiene remitos y facturas, **ignora por completo las facturas** y extrae datos únicamente de los remitos. Solo si no hay ningún remito en todo el archivo, toma los datos de la factura (usando el neto gravado sin impuestos).
-      * **Sin duplicados:** Si un mismo número de remito aparece más de una vez (por ejemplo, Original y Duplicado en distintas hojas), consíderalo **una sola vez** para no repetir su número ni sumar dos veces su valor declarado.
-      * **Número Principal ('nro'):** Toma el primer remito único encontrado en orden de aparición, en 12 dígitos continuos sin letras ni guiones (ej: de "R00108-00217613" -> "010800217613").
-      * **Demás Remitos ('otros_nro'):** Incluye en este array todos los demás números de remitos únicos encontrados en las páginas siguientes, también en 12 dígitos continuos sin letras ni guiones. Si solo existe un remito único en todo el archivo, devuelve `[]`.
-      * **Valor Declarado ('val_decl'):** Suma los valores declarados de **todos los remitos únicos** detectados en todas las páginas y coloca el resultado numérico total (`float`) en `val_decl`. Si no hay valores declarados, coloca `null`.
+    - Comprobantes en TODAS las páginas ('comprobantes_detectados'):
+      * Recorre **todas y cada una de las páginas** del archivo desde la primera hasta la última. No te detengas en la primera página.
+      * En 'comprobantes_detectados', enumera en orden de aparición cada comprobante encontrado en cada página:
+        - 'tipo': "REMITO" si es un remito, o "FACTURA" si es una factura.
+        - 'nro': Número del comprobante en 12 dígitos continuos sin letras ni guiones (4 dígitos de punto de venta + 8 dígitos de número; ej. de "R00108-00217613" -> "010800217613").
+        - 'valor': Si es REMITO, su valor declarado numérico (float). Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float). Si no figura, null.
+      * Si hay remitos y facturas en el legajo, igual listalos todos en 'comprobantes_detectados' con su 'tipo' correcto para que el sistema aplique la prioridad a remitos.
 
     - Flete:
       * 'cond_pago': **SOLO** si se detecta redespacho de **Expreso Luján de Cuyo S.A.**, **ESA Logística S.A.** o **Entregar S.A.**, asigna obligatoriamente `'ORIGEN'`. En los demás casos, extrae `'ORIGEN'` o `'DESTINO'` según figure en el comprobante, o usa `'DESTINO'` por defecto si no está indicado.
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
-    - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del comprobante, códigos postales, datos de carga, observaciones y total general con impuestos de las facturas.
+    - EXCLUYE COMPLETAMENTE: fecha del comprobante, códigos postales, datos de carga, observaciones y total general con impuestos de las facturas.
 
     Estructura JSON ESTRICTA Y FIJA (Mantener siempre todas las claves devolviendo null o [] según corresponda):
     {{
@@ -221,6 +331,13 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
         }},
         "email": str o null
       }},
+      "comprobantes_detectados": [
+        {{
+          "tipo": str,
+          "nro": str o null,
+          "valor": float o null
+        }}
+      ],
       "comprob": {{
         "nro": str o null,
         "otros_nro": [str],
@@ -255,8 +372,9 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                 config=config
             )
             resultado_json = json.loads(response.text.strip())
-            enviar_a_google_sheets(resultado_json)
-            return resultado_json
+            resultado_consolidado = consolidar_comprobantes_en_python(resultado_json)
+            enviar_a_google_sheets(resultado_consolidado)
+            return resultado_consolidado
         except Exception as e:
             ultimo_error = str(e)
 
