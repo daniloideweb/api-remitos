@@ -15,8 +15,8 @@ from google.genai import types
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con consolidación de múltiples remitos, redespacho y persistencia en Sheets.",
-    version="2.24.0"
+    description="Servicio de visión e IA con consolidación multipágina de remitos, redespacho y persistencia en Sheets.",
+    version="2.25.0"
 )
 
 app.add_middleware(
@@ -44,8 +44,7 @@ def enviar_a_google_sheets(resultado_ia: dict):
         comprob = resultado_ia.get("comprob", {})
         nro_principal = comprob.get("nro") or "N/D"
         otros = comprob.get("otros_nro") or []
-        
-        # Si hay remitos secundarios, los anexamos en la celda de auditoría para trazabilidad completa
+
         texto_comprobante = nro_principal
         if otros:
             texto_comprobante = f"{nro_principal} (+ {', '.join(otros)})"
@@ -93,7 +92,7 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
     try:
         img = Image.open(io.BytesIO(file_bytes))
         img = ImageOps.exif_transpose(img)
-        
+
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
 
@@ -104,10 +103,10 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         if bbox:
             img = img.crop(bbox)
 
-        img.thumbnail((800, 800))
-        
+        img.thumbnail((1280, 1280))
+
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=80, optimize=True)
+        img.save(buffer, format="JPEG", quality=85, optimize=True)
         return buffer.getvalue(), "image/jpeg"
     except Exception:
         return file_bytes, mime_type
@@ -160,8 +159,8 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     {LISTADO_LOCALIDADES}
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
-    - Remitente y Destinatario: 
-      * Remitente ('rem'): 
+    - Remitente y Destinatario:
+      * Remitente ('rem'):
         Inspecciona el comprobante en busca de sellos o marcas de redespacho. Si detectas alguna de las siguientes empresas, debés asignar **estrictamente** los datos maestros oficiales de nuestra base (reemplazando al cliente original del membrete):
           1. **EXPRESO LUJAN DE CUYO S.A.** (Sello ovalado/circular rojo):
              - rs: "EXPRESO LUJAN DE CUYO S.A."
@@ -183,17 +182,17 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
       * Teléfono ('tel'): Extrae un único número telefónico priorizando celular ('prefijo' sin el 0 inicial, 'numero' sin el prefijo móvil 15). Si no existe, null.
     - Código de Localidad ('cod_loc') para el Destinatario: Búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
-    
-    - Comprobantes ('comprob') y Valor Declarado ('val_decl') — REGLA DE MÚLTIPLES DOCUMENTOS:
-      * **Prioridad exclusiva a Remitos:** Si el archivo contiene tanto remitos como facturas, **desestima por completo las facturas** y trabaja únicamente con los remitos. Solo si el envío contiene exclusivamente facturas (sin ningún remito), extrae los datos de la factura (tomando únicamente su subtotal neto gravado sin IVA ni impuestos).
-      * **Deduplicación:** Si un mismo remito aparece repetido en distintas hojas (por ejemplo, ejemplar Original y Duplicado con el mismo número), contabilízalo **una sola vez** para no duplicar su número ni su importe.
-      * **Número Principal ('nro'):** Extrae el número del **primer remito** encontrado en un bloque continuo de exactamente 12 dígitos sin letras ni guiones (4 dígitos de punto de venta + 8 dígitos de número, ej: de "R00108-00217613" extrae "010800217613").
-      * **Demás Remitos ('otros_nro'):** Lista en un array de strings todos los demás números de remitos únicos del envío (cada uno también formateado en 12 dígitos continuos sin letras ni guiones). Si hay un solo remito en todo el archivo, devuelve una lista vacía `[]`.
-      * **Valor Declarado ('val_decl'):** Suma los valores declarados (subtotales) de **todos los remitos únicos** del envío y coloca el monto total sumado (float) en `val_decl`. Si ninguno tiene valor declarado, coloca null.
+
+    - Comprobantes ('comprob') y Valor Declarado ('val_decl') — REGLA DE MÚLTIPLES PÁGINAS Y REMITOS:
+      * Recorre **todas las páginas** del archivo de principio a fin antes de generar el JSON. No te detengas en la primera hoja.
+      * **Prioridad exclusiva a Remitos:** Si el archivo contiene remitos y facturas, **ignora por completo las facturas** y extrae datos únicamente de los remitos. Solo si no hay ningún remito en todo el archivo, toma los datos de la factura (usando el neto gravado sin impuestos).
+      * **Sin duplicados:** Si un mismo número de remito aparece más de una vez (por ejemplo, Original y Duplicado en distintas hojas), consíderalo **una sola vez** para no repetir su número ni sumar dos veces su valor declarado.
+      * **Número Principal ('nro'):** Toma el primer remito único encontrado en orden de aparición, en 12 dígitos continuos sin letras ni guiones (ej: de "R00108-00217613" -> "010800217613").
+      * **Demás Remitos ('otros_nro'):** Incluye en este array todos los demás números de remitos únicos encontrados en las páginas siguientes, también en 12 dígitos continuos sin letras ni guiones. Si solo existe un remito único en todo el archivo, devuelve `[]`.
+      * **Valor Declarado ('val_decl'):** Suma los valores declarados de **todos los remitos únicos** detectados en todas las páginas y coloca el resultado numérico total (`float`) en `val_decl`. Si no hay valores declarados, coloca `null`.
 
     - Flete:
-      * 'cond_pago': Extrae 'ORIGEN' o 'DESTINO'. 
-        **REGLA CRÍTICA DE REDESPACHO:** Si el comprobante corresponde a un redespacho de **Expreso Luján de Cuyo**, **ESA Logística** o **Entregar**, la condición de pago del flete debe asignarse obligatoriamente como **'ORIGEN'**. En caso contrario, extrae 'ORIGEN' o 'DESTINO' según el documento (si no se detecta o no está indicado, define por defecto 'DESTINO').
+      * 'cond_pago': **SOLO** si se detecta redespacho de **Expreso Luján de Cuyo S.A.**, **ESA Logística S.A.** o **Entregar S.A.**, asigna obligatoriamente `'ORIGEN'`. En los demás casos, extrae `'ORIGEN'` o `'DESTINO'` según figure en el comprobante, o usa `'DESTINO'` por defecto si no está indicado.
       * 'cr': true si indica contrarreembolso o C/R, de lo contrario false.
       * 'monto_cr': Monto numérico si hay contrarreembolso, de lo contrario null.
     - EXCLUYE COMPLETAMENTE: tipo de comprobante, fecha del comprobante, códigos postales, datos de carga, observaciones y total general con impuestos de las facturas.
@@ -260,7 +259,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
             return resultado_json
         except Exception as e:
             ultimo_error = str(e)
-            
+
             if any(err in ultimo_error for err in ["429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE"]):
                 espera = 4.0
                 match_delay = re.search(r"retryDelay':\s*'(\d+)", ultimo_error)
