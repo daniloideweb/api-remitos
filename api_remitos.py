@@ -152,6 +152,15 @@ def renderizar_pdf_a_imagenes(pdf_bytes: bytes, dpi: int = 160) -> list[tuple[by
     return paginas if paginas else [(pdf_bytes, "application/pdf")]
 
 
+def _es_respuesta_valida(res: requests.Response) -> bool:
+    if res.status_code != 200 or not res.content:
+        return False
+    cabecera = res.content[:150].lower()
+    if res.content.startswith(b"<!DOCTYPE html>") or b"<html" in cabecera:
+        return False
+    return True
+
+
 def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
     file_id = obtener_id_drive(url)
     session = requests.Session()
@@ -159,18 +168,20 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
-    alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
-    res = session.get(alt_url, headers=headers, timeout=25)
+    # 1. Priorizar descarga directa del archivo original (conserva PDFs multipágina)
+    download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
+    res = session.get(download_url, headers=headers, timeout=30)
+    if "confirm=" in res.text:
+        token = re.search(r"confirm=([0-9A-Za-z_]+)", res.text)
+        if token:
+            res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=30)
 
-    if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
-        download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
-        res = session.get(download_url, headers=headers, timeout=25)
-        if "confirm=" in res.text:
-            token = re.search(r"confirm=([0-9A-Za-z_]+)", res.text)
-            if token:
-                res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=25)
+    # 2. Respaldo vía lh3 si la descarga directa no devolvió archivo válido
+    if not _es_respuesta_valida(res):
+        alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
+        res = session.get(alt_url, headers=headers, timeout=30)
 
-    if res.status_code != 200 or res.content.startswith(b"<!DOCTYPE html>") or b"<html" in res.content[:100].lower():
+    if not _es_respuesta_valida(res):
         raise HTTPException(
             status_code=400,
             detail="No se pudo descargar la imagen o documento de Drive. Verifique que el archivo tenga acceso en 'Cualquier persona con el enlace'."
@@ -368,13 +379,6 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
 
 
 def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
-    """
-    Consolida los datos extraídos de una o múltiples páginas en Python:
-    - Toma el bloque 'rem', 'dest' y 'flete' más completo disponible.
-    - Si hay remitos en cualquier página, descarta por completo las facturas.
-    - Deduplica números de remito normalizados a 12 dígitos.
-    - Asigna el primer remito a 'nro', los demás a 'otros_nro' y suma 'val_decl'.
-    """
     print(f"[CONSOLIDAR] Cantidad de hojas recibidas: {len(resultados_por_pagina)}", flush=True)
     base_rem = None
     base_dest = None
