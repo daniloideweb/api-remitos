@@ -375,15 +375,20 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     - Deduplica números de remito normalizados a 12 dígitos.
     - Asigna el primer remito a 'nro', los demás a 'otros_nro' y suma 'val_decl'.
     """
+    print(f"[CONSOLIDAR] Cantidad de hojas recibidas: {len(resultados_por_pagina)}", flush=True)
     base_rem = None
     base_dest = None
     base_flete = None
 
     todos_detectados = []
 
-    for res in resultados_por_pagina:
+    for idx, res in enumerate(resultados_por_pagina):
         if not isinstance(res, dict):
+            print(f"[CONSOLIDAR] Hoja {idx + 1} sin dict válido: {res}", flush=True)
             continue
+
+        detectados_hoja = res.get("comprobantes_detectados") or []
+        print(f"[CONSOLIDAR] Hoja {idx + 1} detectados: {detectados_hoja}", flush=True)
 
         rem_actual = res.get("rem")
         if isinstance(rem_actual, dict) and rem_actual.get("rs"):
@@ -404,8 +409,7 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
             if base_flete is None or flete_actual.get("cond_pago") == "ORIGEN":
                 base_flete = flete_actual
 
-        detectados = res.get("comprobantes_detectados") or []
-        for item in detectados:
+        for item in detectados_hoja:
             if isinstance(item, dict):
                 todos_detectados.append(item)
 
@@ -445,6 +449,8 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     valores_numericos = [v for v in vistos.values() if v is not None]
     total_val_decl = round(sum(valores_numericos), 2) if valores_numericos else None
 
+    print(f"[CONSOLIDAR] Final -> nro={nro_principal}, otros={otros_nro}, val_decl={total_val_decl}", flush=True)
+
     return {
         "rem": base_rem or {
             "rs": None,
@@ -476,13 +482,17 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
 
 
 def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
+    print(f"[PROCESAR] MIME recibido: {mime_type}, HAS_FITZ={HAS_FITZ}", flush=True)
     if mime_type == "application/pdf":
         hojas = renderizar_pdf_a_imagenes(file_bytes)
     else:
         hojas = [(file_bytes, mime_type)]
 
+    print(f"[PROCESAR] Total de hojas a procesar: {len(hojas)}", flush=True)
+
     resultados_hojas = []
     for idx, (hoja_bytes, hoja_mime) in enumerate(hojas):
+        print(f"[PROCESAR] Procesando hoja {idx + 1}/{len(hojas)} ({hoja_mime})...", flush=True)
         res_hoja = llamar_gemini_una_parte(
             part_bytes=hoja_bytes,
             part_mime=hoja_mime,
