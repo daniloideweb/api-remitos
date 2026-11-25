@@ -9,7 +9,7 @@ from datetime import datetime
 from collections import defaultdict
 import requests
 from PIL import Image, ImageOps, ImageChops
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from google import genai
@@ -24,7 +24,7 @@ except ImportError:
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho y persistencia en Sheets.",
-    version="2.29.0"
+    version="2.30.0"
 )
 
 app.add_middleware(
@@ -187,16 +187,16 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
 
     # 1. Priorizar descarga directa del archivo original (conserva PDFs multipágina)
     download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
-    res = session.get(download_url, headers=headers, timeout=25)
+    res = session.get(download_url, headers=headers, timeout=20)
     if "confirm=" in res.text:
         token = re.search(r"confirm=([0-9A-Za-z_]+)", res.text)
         if token:
-            res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=25)
+            res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=20)
 
     # 2. Respaldo vía lh3 si la descarga directa no devolvió archivo válido
     if not _es_respuesta_valida(res):
         alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
-        res = session.get(alt_url, headers=headers, timeout=25)
+        res = session.get(alt_url, headers=headers, timeout=20)
 
     if not _es_respuesta_valida(res):
         raise HTTPException(
@@ -260,11 +260,32 @@ def parsear_monto(valor) -> float | None:
         return None
 
 
+def _construir_config_rapida() -> types.GenerateContentConfig:
+    try:
+        return types.GenerateContentConfig(
+            response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(thinking_budget=0)
+        )
+    except Exception:
+        return types.GenerateContentConfig(
+            response_mime_type="application/json"
+        )
+
+
+CONFIG_RAPIDA = _construir_config_rapida()
+
+
 def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicional: bool = False) -> dict:
     contexto_hoja = (
-        "Esta es una página adicional de un mismo envío/legajo. Analiza su contenido y extrae los comprobantes presentes."
+        "Esta es una página adicional del mismo legajo. Enfocate en extraer los comprobantes presentes en esta hoja."
         if es_pagina_adicional
         else "Analiza este comprobante o primera hoja del envío y extrae los datos solicitados."
+    )
+
+    bloque_localidades = (
+        f"LISTADO OFICIAL DE LOCALIDADES Y CÓDIGOS:\n{LISTADO_LOCALIDADES}"
+        if not es_pagina_adicional
+        else "Para 'cod_loc' en páginas adicionales, coloca null salvo que sea indispensable."
     )
 
     prompt_instrucciones = f"""
@@ -274,8 +295,7 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
     INSTRUCCIÓN DE LECTURA Y ORIENTACIÓN:
     La imagen puede estar invertida o rotada. Determina la orientación correcta antes de extraer los datos.
 
-    LISTADO OFICIAL DE LOCALIDADES Y CÓDIGOS:
-    {LISTADO_LOCALIDADES}
+    {bloque_localidades}
 
     REGLAS DE EXTRACCIÓN Y FORMATO:
     - Remitente y Destinatario:
@@ -360,11 +380,7 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
     part_texto = types.Part.from_text(text=prompt_instrucciones)
     contenido = types.Content(role="user", parts=[part_archivo, part_texto])
 
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json"
-    )
-
-    max_intentos = 3
+    max_intentos = 2
     ultimo_error = None
 
     for _ in range(max_intentos):
@@ -372,21 +388,21 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
                 contents=[contenido],
-                config=config
+                config=CONFIG_RAPIDA
             )
             return json.loads(response.text.strip())
         except Exception as e:
             ultimo_error = str(e)
 
             if any(err in ultimo_error for err in ["429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE"]):
-                espera = 2.5
+                espera = 1.5
                 match_delay = re.search(r"retryDelay':\s*'(\d+)", ultimo_error)
                 if match_delay:
-                    espera = min(float(match_delay.group(1)) + 0.5, 10.0)
+                    espera = min(float(match_delay.group(1)) + 0.3, 4.0)
                 else:
                     match_sec = re.search(r"retry in (\d+(?:\.\d+)?)s", ultimo_error)
                     if match_sec:
-                        espera = min(float(match_sec.group(1)) + 0.5, 10.0)
+                        espera = min(float(match_sec.group(1)) + 0.3, 4.0)
 
                 time.sleep(espera)
                 continue
@@ -513,7 +529,7 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     }
 
 
-def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
+def procesar_con_gemini(file_bytes: bytes, mime_type: str, background_tasks: BackgroundTasks | None = None) -> dict:
     t_inicio = time.perf_counter()
     print(f"[PROCESAR] MIME recibido: {mime_type}, HAS_FITZ={HAS_FITZ}", flush=True)
     resultados_por_idx = {}
@@ -525,7 +541,7 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
             doc_tmp.close()
             del doc_tmp
 
-            tamano_lote = 3
+            tamano_lote = 4
             with ThreadPoolExecutor(max_workers=tamano_lote) as executor:
                 for inicio in range(0, total_hojas, tamano_lote):
                     fin = min(inicio + tamano_lote, total_hojas)
@@ -547,7 +563,6 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
                         resultados_por_idx[idx_resuelto] = futuro.result()
 
                     del lote, futuros
-                    gc.collect()
 
             resultados_hojas = [resultados_por_idx[i] for i in sorted(resultados_por_idx.keys())]
         except Exception as exc:
@@ -563,7 +578,11 @@ def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     gc.collect()
 
     resultado_final = consolidar_resultados_paginas(resultados_hojas)
-    enviar_a_google_sheets(resultado_final)
+    if background_tasks is not None:
+        background_tasks.add_task(enviar_a_google_sheets, resultado_final)
+    else:
+        enviar_a_google_sheets(resultado_final)
+
     print(f"[PROCESAR] Tiempo total de procesamiento: {time.perf_counter() - t_inicio:.2f}s", flush=True)
     return resultado_final
 
@@ -585,15 +604,18 @@ def estadisticas_diarias():
 
 @app.get("/procesar-remito")
 @app.get("/procesar-remito/")
-def procesar_remito_get(archivo_url: str = Query(..., description="URL de Drive del comprobante")):
+def procesar_remito_get(
+    background_tasks: BackgroundTasks,
+    archivo_url: str = Query(..., description="URL de Drive del comprobante")
+):
     registrar_llamado()
     file_bytes, mime_type = descargar_archivo_drive(archivo_url)
-    return procesar_con_gemini(file_bytes, mime_type)
+    return procesar_con_gemini(file_bytes, mime_type, background_tasks)
 
 
 @app.post("/procesar-remito")
 @app.post("/procesar-remito/")
-def procesar_remito_post(payload: RemitoRequest):
+def procesar_remito_post(payload: RemitoRequest, background_tasks: BackgroundTasks):
     registrar_llamado()
     file_bytes, mime_type = descargar_archivo_drive(payload.archivo_url)
-    return procesar_con_gemini(file_bytes, mime_type)
+    return procesar_con_gemini(file_bytes, mime_type, background_tasks)
