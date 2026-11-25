@@ -1,3 +1,4 @@
+import gc
 import os
 import re
 import io
@@ -21,8 +22,8 @@ except ImportError:
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con renderizado PDF página por página, consolidación en Python, redespacho y persistencia en Sheets.",
-    version="2.27.0"
+    description="Servicio de visión e IA con streaming PDF página por página, consolidación en Python, redespacho y persistencia en Sheets.",
+    version="2.28.0"
 )
 
 app.add_middleware(
@@ -100,6 +101,10 @@ def obtener_id_drive(url: str) -> str:
 def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
     if not mime_type.startswith("image/"):
         return file_bytes, mime_type
+    img = None
+    bg = None
+    diff = None
+    buffer = None
     try:
         img = Image.open(io.BytesIO(file_bytes))
         img = ImageOps.exif_transpose(img)
@@ -114,42 +119,53 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         if bbox:
             img = img.crop(bbox)
 
-        img.thumbnail((1280, 1280))
+        img.thumbnail((1024, 1024))
 
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=85, optimize=True)
+        img.save(buffer, format="JPEG", quality=82, optimize=True)
         return buffer.getvalue(), "image/jpeg"
     except Exception:
         return file_bytes, mime_type
+    finally:
+        for obj in (buffer, diff, bg, img):
+            if obj is not None:
+                try:
+                    obj.close()
+                except Exception:
+                    pass
+        del buffer, diff, bg, img
 
 
-def renderizar_pdf_a_imagenes(pdf_bytes: bytes, dpi: int = 160) -> list[tuple[bytes, str]]:
+def iterar_paginas_pdf(pdf_bytes: bytes, dpi: int = 120):
     """
-    Convierte cada página de un PDF en una imagen JPEG normalizada para que
-    ninguna hoja quede omitida durante el análisis de visión.
+    Generador en streaming: renderiza y libera una página del PDF a la vez
+    para mantener bajo el consumo de memoria en instancias acotadas.
     """
-    if not HAS_FITZ:
-        return [(pdf_bytes, "application/pdf")]
-
-    paginas = []
     doc = None
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        total = len(doc)
         zoom = dpi / 72.0
         matriz = fitz.Matrix(zoom, zoom)
 
-        for pagina in doc:
+        for idx in range(total):
+            pagina = doc[idx]
             pix = pagina.get_pixmap(matrix=matriz, alpha=False)
             img_bytes = pix.tobytes("jpeg")
+            del pix
             norm_bytes, norm_mime = normalizar_imagen(img_bytes, "image/jpeg")
-            paginas.append((norm_bytes, norm_mime))
-    except Exception:
-        return [(pdf_bytes, "application/pdf")]
+            del img_bytes
+            yield idx, total, norm_bytes, norm_mime
+            del norm_bytes
+            gc.collect()
     finally:
         if doc is not None:
-            doc.close()
-
-    return paginas if paginas else [(pdf_bytes, "application/pdf")]
+            try:
+                doc.close()
+            except Exception:
+                pass
+        del doc
+        gc.collect()
 
 
 def _es_respuesta_valida(res: requests.Response) -> bool:
@@ -194,6 +210,9 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
         mime_type = "image/png"
     else:
         mime_type = "image/jpeg"
+
+    if mime_type == "application/pdf":
+        return res.content, mime_type
 
     clean_bytes, clean_mime = normalizar_imagen(res.content, mime_type)
     return clean_bytes, clean_mime
@@ -285,7 +304,8 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
     - Comprobantes en esta hoja ('comprobantes_detectados'):
       * Enumera en orden de aparición cada comprobante visible en esta hoja:
         - 'tipo': "REMITO" si es un remito, o "FACTURA" si es una factura.
-        - 'nro': Número del comprobante en 12 dígitos continuos sin letras ni guiones (4 dígitos de punto de venta + 8 dígitos de número; ej. de "R00108-00217613" -> "010800217613").
+        - 'nro': Número del comprobante normalizado a 12 dígitos continuos sin letras ni guiones.
+          REGLA ESPECIAL MOLINOS RÍO DE LA PLATA + EXPRESO LUJÁN DE CUYO: Si el comprobante corresponde a Molinos Río de la Plata y está redespachado por Expreso Luján de Cuyo, **NO** uses el número superior del remito; tomá **estrictamente** el número que figura en el recuadro **"Entrega SAP"** (ej. si figura "0081039877", normalizalo a 12 dígitos -> "000081039877"). En los demás comprobantes, usá 4 dígitos de punto de venta + 8 dígitos de número (ej. de "R00108-00217613" -> "010800217613").
         - 'valor': Si es REMITO, su valor declarado numérico (float). Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float). Si no figura, null.
 
     - Flete:
@@ -379,6 +399,13 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
 
 
 def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
+    """
+    Consolida los datos extraídos de una o múltiples páginas en Python:
+    - Toma el bloque 'rem', 'dest' y 'flete' más completo disponible.
+    - Si hay remitos en cualquier página, descarta por completo las facturas.
+    - Deduplica números de remito normalizados a 12 dígitos.
+    - Asigna el primer remito a 'nro', los demás a 'otros_nro' y suma 'val_decl'.
+    """
     print(f"[CONSOLIDAR] Cantidad de hojas recibidas: {len(resultados_por_pagina)}", flush=True)
     base_rem = None
     base_dest = None
@@ -487,22 +514,29 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
 
 def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
     print(f"[PROCESAR] MIME recibido: {mime_type}, HAS_FITZ={HAS_FITZ}", flush=True)
-    if mime_type == "application/pdf":
-        hojas = renderizar_pdf_a_imagenes(file_bytes)
-    else:
-        hojas = [(file_bytes, mime_type)]
-
-    print(f"[PROCESAR] Total de hojas a procesar: {len(hojas)}", flush=True)
-
     resultados_hojas = []
-    for idx, (hoja_bytes, hoja_mime) in enumerate(hojas):
-        print(f"[PROCESAR] Procesando hoja {idx + 1}/{len(hojas)} ({hoja_mime})...", flush=True)
-        res_hoja = llamar_gemini_una_parte(
-            part_bytes=hoja_bytes,
-            part_mime=hoja_mime,
-            es_pagina_adicional=(idx > 0)
+
+    if mime_type == "application/pdf" and HAS_FITZ:
+        try:
+            for idx, total_hojas, hoja_bytes, hoja_mime in iterar_paginas_pdf(file_bytes):
+                print(f"[PROCESAR] Procesando hoja {idx + 1}/{total_hojas} ({hoja_mime})...", flush=True)
+                res_hoja = llamar_gemini_una_parte(
+                    part_bytes=hoja_bytes,
+                    part_mime=hoja_mime,
+                    es_pagina_adicional=(idx > 0)
+                )
+                resultados_hojas.append(res_hoja)
+        except Exception as exc:
+            print(f"[PROCESAR] Fallback PDF directo tras error en streaming: {exc}", flush=True)
+            resultados_hojas = [llamar_gemini_una_parte(file_bytes, mime_type, es_pagina_adicional=False)]
+    else:
+        print("[PROCESAR] Procesando hoja 1/1...", flush=True)
+        resultados_hojas.append(
+            llamar_gemini_una_parte(file_bytes, mime_type, es_pagina_adicional=False)
         )
-        resultados_hojas.append(res_hoja)
+
+    del file_bytes
+    gc.collect()
 
     resultado_final = consolidar_resultados_paginas(resultados_hojas)
     enviar_a_google_sheets(resultado_final)
