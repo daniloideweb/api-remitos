@@ -4,6 +4,7 @@ import re
 import io
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from collections import defaultdict
 import requests
@@ -22,8 +23,8 @@ except ImportError:
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con streaming PDF página por página, consolidación en Python, redespacho y persistencia en Sheets.",
-    version="2.28.0"
+    description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho y persistencia en Sheets.",
+    version="2.29.0"
 )
 
 app.add_middleware(
@@ -64,7 +65,7 @@ def enviar_a_google_sheets(resultado_ia: dict):
             "destinatario": resultado_ia.get("dest", {}).get("rs"),
             "flete": resultado_ia.get("flete", {}).get("cond_pago")
         }
-        requests.post(WEBHOOK_SHEETS_URL, json=payload, timeout=5)
+        requests.post(WEBHOOK_SHEETS_URL, json=payload, timeout=4)
     except Exception:
         pass
 
@@ -122,7 +123,7 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         img.thumbnail((1024, 1024))
 
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=82, optimize=True)
+        img.save(buffer, format="JPEG", quality=80, optimize=True)
         return buffer.getvalue(), "image/jpeg"
     except Exception:
         return file_bytes, mime_type
@@ -136,28 +137,28 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         del buffer, diff, bg, img
 
 
-def iterar_paginas_pdf(pdf_bytes: bytes, dpi: int = 120):
+def renderizar_rango_pdf(pdf_bytes: bytes, inicio: int, fin: int, dpi: int = 115) -> list[tuple[int, bytes, str]]:
     """
-    Generador en streaming: renderiza y libera una página del PDF a la vez
-    para mantener bajo el consumo de memoria en instancias acotadas.
+    Renderiza únicamente un rango acotado de páginas [inicio, fin) para mantener
+    bajo el pico de RAM y permitir procesamiento concurrente por tanda.
     """
+    lote = []
     doc = None
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         total = len(doc)
+        limite = min(fin, total)
         zoom = dpi / 72.0
         matriz = fitz.Matrix(zoom, zoom)
 
-        for idx in range(total):
+        for idx in range(inicio, limite):
             pagina = doc[idx]
             pix = pagina.get_pixmap(matrix=matriz, alpha=False)
             img_bytes = pix.tobytes("jpeg")
             del pix
             norm_bytes, norm_mime = normalizar_imagen(img_bytes, "image/jpeg")
             del img_bytes
-            yield idx, total, norm_bytes, norm_mime
-            del norm_bytes
-            gc.collect()
+            lote.append((idx, norm_bytes, norm_mime))
     finally:
         if doc is not None:
             try:
@@ -165,7 +166,7 @@ def iterar_paginas_pdf(pdf_bytes: bytes, dpi: int = 120):
             except Exception:
                 pass
         del doc
-        gc.collect()
+    return lote
 
 
 def _es_respuesta_valida(res: requests.Response) -> bool:
@@ -186,16 +187,16 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
 
     # 1. Priorizar descarga directa del archivo original (conserva PDFs multipágina)
     download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
-    res = session.get(download_url, headers=headers, timeout=30)
+    res = session.get(download_url, headers=headers, timeout=25)
     if "confirm=" in res.text:
         token = re.search(r"confirm=([0-9A-Za-z_]+)", res.text)
         if token:
-            res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=30)
+            res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=25)
 
     # 2. Respaldo vía lh3 si la descarga directa no devolvió archivo válido
     if not _es_respuesta_valida(res):
         alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
-        res = session.get(alt_url, headers=headers, timeout=30)
+        res = session.get(alt_url, headers=headers, timeout=25)
 
     if not _es_respuesta_valida(res):
         raise HTTPException(
@@ -305,8 +306,8 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
       * Enumera en orden de aparición cada comprobante visible en esta hoja:
         - 'tipo': "REMITO" si es un remito, o "FACTURA" si es una factura.
         - 'nro': Número del comprobante normalizado a 12 dígitos continuos sin letras ni guiones.
-          REGLA ESPECIAL MOLINOS RÍO DE LA PLATA + EXPRESO LUJÁN DE CUYO: Si el comprobante corresponde a Molinos Río de la Plata y está redespachado por Expreso Luján de Cuyo, **NO** uses el número superior del remito; tomá **estrictamente** el número que figura en el recuadro **"Entrega SAP"** (ej. si figura "0081039877", normalizalo a 12 dígitos -> "000081039877"). En los demás comprobantes, usá 4 dígitos de punto de venta + 8 dígitos de número (ej. de "R00108-00217613" -> "010800217613").
-        - 'valor': Si es REMITO, su valor declarado numérico (float). Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float). Si no figura, null.
+          REGLA SAP (MOLINOS RÍO DE LA PLATA + EXPRESO LUJÁN DE CUYO): Si el comprobante corresponde a Molinos Río de la Plata y está redespachado por Expreso Luján de Cuyo, **NO** uses el número superior del remito; tomá **estrictamente** el número del recuadro **"Entrega SAP"** (ej. si figura "0081039877", normalizalo a 12 dígitos -> "000081039877"). Si el comprobante tiene recuadro **"Entrega SAP"** en este escenario SAP, ese valor de Entrega SAP es el número obligatorio del comprobante. En los demás comprobantes, usá 4 dígitos de punto de venta + 8 dígitos de número (ej. de "R00108-00217613" -> "010800217613").
+        - 'valor': Si es REMITO, su valor declarado numérico (float) si figura explícitamente; en remitos de Molinos redespachados por Expreso Luján de Cuyo donde no haya un valor declarado explícito o solo figure el total de bultos/unidades, devolvé null salvo que exista un importe monetario expreso. Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float). Si no figura, null.
 
     - Flete:
       * 'cond_pago': **SOLO** si se detecta redespacho de **Expreso Luján de Cuyo S.A.**, **ESA Logística S.A.** o **Entregar S.A.**, asigna obligatoriamente `'ORIGEN'`. En los demás casos, extrae `'ORIGEN'` o `'DESTINO'` según figure en el comprobante, o usa `'DESTINO'` por defecto si no está indicado.
@@ -363,7 +364,7 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
         response_mime_type="application/json"
     )
 
-    max_intentos = 4
+    max_intentos = 3
     ultimo_error = None
 
     for _ in range(max_intentos):
@@ -378,14 +379,14 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
             ultimo_error = str(e)
 
             if any(err in ultimo_error for err in ["429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE"]):
-                espera = 4.0
+                espera = 2.5
                 match_delay = re.search(r"retryDelay':\s*'(\d+)", ultimo_error)
                 if match_delay:
-                    espera = float(match_delay.group(1)) + 1.0
+                    espera = min(float(match_delay.group(1)) + 0.5, 10.0)
                 else:
                     match_sec = re.search(r"retry in (\d+(?:\.\d+)?)s", ultimo_error)
                     if match_sec:
-                        espera = float(match_sec.group(1)) + 1.0
+                        espera = min(float(match_sec.group(1)) + 0.5, 10.0)
 
                 time.sleep(espera)
                 continue
@@ -513,33 +514,57 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
 
 
 def procesar_con_gemini(file_bytes: bytes, mime_type: str) -> dict:
+    t_inicio = time.perf_counter()
     print(f"[PROCESAR] MIME recibido: {mime_type}, HAS_FITZ={HAS_FITZ}", flush=True)
-    resultados_hojas = []
+    resultados_por_idx = {}
 
     if mime_type == "application/pdf" and HAS_FITZ:
         try:
-            for idx, total_hojas, hoja_bytes, hoja_mime in iterar_paginas_pdf(file_bytes):
-                print(f"[PROCESAR] Procesando hoja {idx + 1}/{total_hojas} ({hoja_mime})...", flush=True)
-                res_hoja = llamar_gemini_una_parte(
-                    part_bytes=hoja_bytes,
-                    part_mime=hoja_mime,
-                    es_pagina_adicional=(idx > 0)
-                )
-                resultados_hojas.append(res_hoja)
+            doc_tmp = fitz.open(stream=file_bytes, filetype="pdf")
+            total_hojas = len(doc_tmp)
+            doc_tmp.close()
+            del doc_tmp
+
+            tamano_lote = 3
+            with ThreadPoolExecutor(max_workers=tamano_lote) as executor:
+                for inicio in range(0, total_hojas, tamano_lote):
+                    fin = min(inicio + tamano_lote, total_hojas)
+                    lote = renderizar_rango_pdf(file_bytes, inicio, fin)
+                    print(f"[PROCESAR] Tanda hojas {inicio + 1}-{fin}/{total_hojas}...", flush=True)
+
+                    futuros = {
+                        executor.submit(
+                            llamar_gemini_una_parte,
+                            hoja_bytes,
+                            hoja_mime,
+                            (idx > 0)
+                        ): idx
+                        for idx, hoja_bytes, hoja_mime in lote
+                    }
+
+                    for futuro in as_completed(futuros):
+                        idx_resuelto = futuros[futuro]
+                        resultados_por_idx[idx_resuelto] = futuro.result()
+
+                    del lote, futuros
+                    gc.collect()
+
+            resultados_hojas = [resultados_por_idx[i] for i in sorted(resultados_por_idx.keys())]
         except Exception as exc:
-            print(f"[PROCESAR] Fallback PDF directo tras error en streaming: {exc}", flush=True)
+            print(f"[PROCESAR] Fallback PDF directo tras error en tandas: {exc}", flush=True)
             resultados_hojas = [llamar_gemini_una_parte(file_bytes, mime_type, es_pagina_adicional=False)]
     else:
         print("[PROCESAR] Procesando hoja 1/1...", flush=True)
-        resultados_hojas.append(
+        resultados_hojas = [
             llamar_gemini_una_parte(file_bytes, mime_type, es_pagina_adicional=False)
-        )
+        ]
 
-    del file_bytes
+    del file_bytes, resultados_por_idx
     gc.collect()
 
     resultado_final = consolidar_resultados_paginas(resultados_hojas)
     enviar_a_google_sheets(resultado_final)
+    print(f"[PROCESAR] Tiempo total de procesamiento: {time.perf_counter() - t_inicio:.2f}s", flush=True)
     return resultado_final
 
 
