@@ -24,7 +24,7 @@ except ImportError:
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho, caché histórico y persistencia en Sheets.",
-    version="2.31.0"
+    version="2.31.1"
 )
 
 app.add_middleware(
@@ -441,7 +441,10 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
                 contents=[contenido],
                 config=CONFIG_RAPIDA
             )
-            return json.loads(response.text.strip())
+            data = json.loads(response.text.strip())
+            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                return data[0]
+            return data
         except Exception as e:
             ultimo_error = str(e)
 
@@ -479,6 +482,9 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     todos_detectados = []
 
     for idx, res in enumerate(resultados_por_pagina):
+        if isinstance(res, list) and len(res) > 0 and isinstance(res[0], dict):
+            res = res[0]
+
         if not isinstance(res, dict):
             print(f"[CONSOLIDAR] Hoja {idx + 1} sin dict válido: {res}", flush=True)
             continue
