@@ -41,7 +41,7 @@ client = genai.Client()
 WEBHOOK_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
 
 # Opcional: URL de Apps Script (doGet) que devuelva filas con estado == "VALIDADO"
-URL_MEMORIA_HISTORICA = ""
+URL_MEMORIA_HISTORICA = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
 MEMORIA_TTL_SEGUNDOS = 900
 
 _memoria_cache = {
