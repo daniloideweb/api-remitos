@@ -23,8 +23,8 @@ except ImportError:
 
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
-    description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho y persistencia en Sheets.",
-    version="2.30.0"
+    description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho, caché histórico y persistencia en Sheets.",
+    version="2.31.0"
 )
 
 app.add_middleware(
@@ -40,6 +40,15 @@ client = genai.Client()
 # URL del Webhook de Google Apps Script vinculado a la planilla de auditoría
 WEBHOOK_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
 
+# Opcional: URL de Apps Script (doGet) que devuelva filas con estado == "VALIDADO"
+URL_MEMORIA_HISTORICA = ""
+MEMORIA_TTL_SEGUNDOS = 900
+
+_memoria_cache = {
+    "actualizado_en": 0.0,
+    "por_cuit": {}
+}
+
 # Registro en memoria para el conteo de llamados diarios (clave: "YYYY-MM-DD")
 registro_llamados = defaultdict(int)
 
@@ -49,9 +58,49 @@ def registrar_llamado():
     registro_llamados[hoy] += 1
 
 
+def refrescar_memoria_historica() -> int:
+    if not URL_MEMORIA_HISTORICA:
+        _memoria_cache["actualizado_en"] = time.time()
+        return len(_memoria_cache["por_cuit"])
+    try:
+        res = requests.get(URL_MEMORIA_HISTORICA, timeout=5)
+        if res.status_code == 200:
+            datos = res.json()
+            mapa = {}
+            if isinstance(datos, list):
+                for fila in datos:
+                    cuit = re.sub(r"\D", "", str(fila.get("cuit_rem") or ""))
+                    if cuit and str(fila.get("estado") or "").upper() == "VALIDADO":
+                        mapa[cuit] = {
+                            "cond_pago": fila.get("cond_pago"),
+                            "regla_sap": bool(fila.get("regla_sap")),
+                            "ejemplo_nro": fila.get("nro")
+                        }
+            _memoria_cache["por_cuit"] = mapa
+            _memoria_cache["actualizado_en"] = time.time()
+    except Exception:
+        pass
+    return len(_memoria_cache["por_cuit"])
+
+
+def obtener_memoria_por_cuit(cuit_rem: str | None) -> dict | None:
+    if not cuit_rem:
+        return None
+    clave = re.sub(r"\D", "", str(cuit_rem))
+    if not clave:
+        return None
+
+    ahora = time.time()
+    if URL_MEMORIA_HISTORICA and (ahora - _memoria_cache["actualizado_en"] > MEMORIA_TTL_SEGUNDOS):
+        refrescar_memoria_historica()
+
+    return _memoria_cache["por_cuit"].get(clave)
+
+
 def enviar_a_google_sheets(resultado_ia: dict):
     try:
         comprob = resultado_ia.get("comprob", {})
+        rem = resultado_ia.get("rem", {})
         nro_principal = comprob.get("nro") or "N/D"
         otros = comprob.get("otros_nro") or []
 
@@ -61,9 +110,11 @@ def enviar_a_google_sheets(resultado_ia: dict):
 
         payload = {
             "comprobante": texto_comprobante,
-            "remitente": resultado_ia.get("rem", {}).get("rs"),
+            "remitente": rem.get("rs"),
+            "cuit_rem": rem.get("cuit"),
             "destinatario": resultado_ia.get("dest", {}).get("rs"),
-            "flete": resultado_ia.get("flete", {}).get("cond_pago")
+            "flete": resultado_ia.get("flete", {}).get("cond_pago"),
+            "estado": "AUTO"
         }
         requests.post(WEBHOOK_SHEETS_URL, json=payload, timeout=4)
     except Exception:
@@ -417,11 +468,8 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
 
 def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     """
-    Consolida los datos extraídos de una o múltiples páginas en Python:
-    - Toma el bloque 'rem', 'dest' y 'flete' más completo disponible.
-    - Si hay remitos en cualquier página, descarta por completo las facturas.
-    - Deduplica números de remito normalizados a 12 dígitos.
-    - Asigna el primer remito a 'nro', los demás a 'otros_nro' y suma 'val_decl'.
+    Consolida los datos extraídos de una o múltiples páginas en Python,
+    aplicando también reglas validadas desde la memoria histórica por CUIT.
     """
     print(f"[CONSOLIDAR] Cantidad de hojas recibidas: {len(resultados_por_pagina)}", flush=True)
     base_rem = None
@@ -497,6 +545,18 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     valores_numericos = [v for v in vistos.values() if v is not None]
     total_val_decl = round(sum(valores_numericos), 2) if valores_numericos else None
 
+    flete_final = base_flete or {
+        "cond_pago": "DESTINO",
+        "cr": False,
+        "monto_cr": None
+    }
+
+    # Aplicar criterio validado desde caché histórico si el CUIT tiene regla confirmada
+    if isinstance(base_rem, dict):
+        memoria_cuit = obtener_memoria_por_cuit(base_rem.get("cuit"))
+        if memoria_cuit and memoria_cuit.get("cond_pago") in {"ORIGEN", "DESTINO"}:
+            flete_final["cond_pago"] = memoria_cuit["cond_pago"]
+
     print(f"[CONSOLIDAR] Final -> nro={nro_principal}, otros={otros_nro}, val_decl={total_val_decl}", flush=True)
 
     return {
@@ -521,11 +581,7 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
             "otros_nro": otros_nro,
             "val_decl": total_val_decl
         },
-        "flete": base_flete or {
-            "cond_pago": "DESTINO",
-            "cr": False,
-            "monto_cr": None
-        }
+        "flete": flete_final
     }
 
 
@@ -599,6 +655,16 @@ def estadisticas_diarias():
         "fecha_actual": hoy,
         "llamados_hoy": registro_llamados[hoy],
         "historico_por_dia": dict(registro_llamados)
+    }
+
+
+@app.post("/refrescar-memoria")
+@app.get("/refrescar-memoria")
+def endpoint_refrescar_memoria():
+    total = refrescar_memoria_historica()
+    return {
+        "status": "ok",
+        "registros_validados_en_cache": total
     }
 
 
