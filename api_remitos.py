@@ -24,7 +24,7 @@ except ImportError:
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho, caché histórico y persistencia en Sheets.",
-    version="2.31.2"
+    version="2.31.3"
 )
 
 app.add_middleware(
@@ -171,10 +171,10 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         if bbox:
             img = img.crop(bbox)
 
-        img.thumbnail((1024, 1024))
+        img.thumbnail((1280, 1280))
 
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=80, optimize=True)
+        img.save(buffer, format="JPEG", quality=82, optimize=True)
         return buffer.getvalue(), "image/jpeg"
     except Exception:
         return file_bytes, mime_type
@@ -188,7 +188,7 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
         del buffer, diff, bg, img
 
 
-def renderizar_rango_pdf(pdf_bytes: bytes, inicio: int, fin: int, dpi: int = 115) -> list[tuple[int, bytes, str]]:
+def renderizar_rango_pdf(pdf_bytes: bytes, inicio: int, fin: int, dpi: int = 140) -> list[tuple[int, bytes, str]]:
     lote = []
     doc = None
     try:
@@ -322,7 +322,7 @@ CONFIG_RAPIDA = _construir_config_rapida()
 
 def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicional: bool = False) -> dict:
     contexto_hoja = (
-        "Esta es una página adicional del mismo legajo. Enfocate en extraer los comprobantes presentes en esta hoja."
+        "Esta es una página adicional del mismo legajo. Enfocate en extraer los comprobantes y sus respectivos importes presentes en esta hoja."
         if es_pagina_adicional
         else "Analiza este comprobante o primera hoja del envío y extrae los datos solicitados."
     )
@@ -372,7 +372,7 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
         - 'tipo': "REMITO" si es un remito, o "FACTURA" si es una factura.
         - 'nro': Número del comprobante normalizado a 12 dígitos continuos sin letras ni guiones.
           REGLA SAP (MOLINOS RÍO DE LA PLATA + EXPRESO LUJÁN DE CUYO): Si el comprobante corresponde a Molinos Río de la Plata y está redespachado por Expreso Luján de Cuyo, **NO** uses el número superior del remito; tomá **estrictamente** el número del recuadro **"Entrega SAP"** (ej. si figura "0081039877", normalizalo a 12 dígitos -> "000081039877"). Si el comprobante tiene recuadro **"Entrega SAP"** en este escenario SAP, ese valor de Entrega SAP es el número obligatorio del comprobante. En los demás comprobantes, usá 4 dígitos de punto de venta + 8 dígitos de número (ej. de "R00108-00217613" -> "010800217613").
-        - 'valor': Si es REMITO, su valor declarado numérico (float) si figura explícitamente; en remitos de Molinos redespachados por Expreso Luján de Cuyo donde no haya un valor declarado explícito o solo figure el total de bultos/unidades, devolvé null salvo que exista un importe monetario expreso. Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float). Si no figura, null.
+        - 'valor': Si es REMITO, extrae su valor declarado o importe monetario impreso (como "MONTO GRAVADO" o valor declarado) en formato numérico (float). Analizá cada hoja por separado y extraé el importe de cada remito aunque haya varias páginas o leyendas comerciales (como "Sin cargo por acuerdo comercial" o notas de crédito); solo devolvé null si no figura ningún importe numérico explícito en ese comprobante o si aplica la excepción de remitos de Molinos redespachados por Expreso Luján de Cuyo sin importe monetario expreso. Si es FACTURA, su subtotal neto gravado sin IVA ni impuestos (float).
 
     - Flete:
       * 'cond_pago': **SOLO** si se detecta redespacho de **Expreso Luján de Cuyo S.A.**, **ESA Logística S.A.** o **Entregar S.A.**, asigna obligatoriamente `'ORIGEN'`. En los demás casos, extrae `'ORIGEN'` o `'DESTINO'` según figure en el comprobante, o usa `'DESTINO'` por defecto si no está indicado.
