@@ -24,7 +24,7 @@ except ImportError:
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho, caché histórico y persistencia en Sheets.",
-    version="2.31.1"
+    version="2.31.2"
 )
 
 app.add_middleware(
@@ -40,7 +40,7 @@ client = genai.Client()
 # URL del Webhook de Google Apps Script vinculado a la planilla de auditoría
 WEBHOOK_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
 
-# Opcional: URL de Apps Script (doGet) que devuelva filas con estado == "VALIDADO"
+# URL de Apps Script (doGet) que devuelva filas con estado == "VALIDADO"
 URL_MEMORIA_HISTORICA = "https://script.google.com/macros/s/AKfycbwO2qETBxvbs9UQy98Lj3rqMZZgiqzp81sxxGAuLfI1yDKMMsQpFj0lcjevXYRW8p6OjA/exec"
 MEMORIA_TTL_SEGUNDOS = 900
 
@@ -189,10 +189,6 @@ def normalizar_imagen(file_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
 
 
 def renderizar_rango_pdf(pdf_bytes: bytes, inicio: int, fin: int, dpi: int = 115) -> list[tuple[int, bytes, str]]:
-    """
-    Renderiza únicamente un rango acotado de páginas [inicio, fin) para mantener
-    bajo el pico de RAM y permitir procesamiento concurrente por tanda.
-    """
     lote = []
     doc = None
     try:
@@ -236,7 +232,6 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
-    # 1. Priorizar descarga directa del archivo original (conserva PDFs multipágina)
     download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&authuser=0"
     res = session.get(download_url, headers=headers, timeout=20)
     if "confirm=" in res.text:
@@ -244,7 +239,6 @@ def descargar_archivo_drive(url: str) -> tuple[bytes, str]:
         if token:
             res = session.get(f"{download_url}&confirm={token.group(1)}", headers=headers, timeout=20)
 
-    # 2. Respaldo vía lh3 si la descarga directa no devolvió archivo válido
     if not _es_respuesta_valida(res):
         alt_url = f"https://lh3.googleusercontent.com/d/{file_id}=s1600"
         res = session.get(alt_url, headers=headers, timeout=20)
@@ -470,10 +464,6 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
 
 
 def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
-    """
-    Consolida los datos extraídos de una o múltiples páginas en Python,
-    aplicando también reglas validadas desde la memoria histórica por CUIT.
-    """
     print(f"[CONSOLIDAR] Cantidad de hojas recibidas: {len(resultados_por_pagina)}", flush=True)
     base_rem = None
     base_dest = None
@@ -548,6 +538,11 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
     nro_principal = numeros_unicos[0] if numeros_unicos else None
     otros_nro = numeros_unicos[1:] if len(numeros_unicos) > 1 else []
 
+    detalle_comprobantes = [
+        {"nro": nro_key, "valor": val}
+        for nro_key, val in vistos.items()
+    ]
+
     valores_numericos = [v for v in vistos.values() if v is not None]
     total_val_decl = round(sum(valores_numericos), 2) if valores_numericos else None
 
@@ -557,7 +552,6 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
         "monto_cr": None
     }
 
-    # Aplicar criterio validado desde caché histórico si el CUIT tiene regla confirmada
     if isinstance(base_rem, dict):
         memoria_cuit = obtener_memoria_por_cuit(base_rem.get("cuit"))
         if memoria_cuit and memoria_cuit.get("cond_pago") in {"ORIGEN", "DESTINO"}:
@@ -585,7 +579,8 @@ def consolidar_resultados_paginas(resultados_por_pagina: list[dict]) -> dict:
         "comprob": {
             "nro": nro_principal,
             "otros_nro": otros_nro,
-            "val_decl": total_val_decl
+            "val_decl": total_val_decl,
+            "comprobantes": detalle_comprobantes
         },
         "flete": flete_final
     }
