@@ -24,7 +24,7 @@ except ImportError:
 app = FastAPI(
     title="API Extracción de Remitos y Facturas Raosa",
     description="Servicio de visión e IA con renderizado PDF por lotes, consolidación en Python, redespacho, caché histórico y persistencia en Sheets.",
-    version="2.31.3"
+    version="2.31.4"
 )
 
 app.add_middleware(
@@ -363,6 +363,8 @@ def llamar_gemini_una_parte(part_bytes: bytes, part_mime: str, es_pagina_adicion
              - cod_loc: "00110"
         Si no existe ningún sello de redespacho, extrae los datos habituales del membrete superior del documento.
         Para el correo ('email') del remitente, extraelo si figura; si no, coloca null.
+      * Destinatario ('dest.rs'):
+        Si el destinatario corresponde a una persona física (por ejemplo, cuando figura con DNI o es claramente el nombre y apellido de una persona y NO una empresa, sociedad o comercio), devolvelo en formato **Apellido(s) primero y Nombre(s) después**, sin coma (ej. si figura "Jose Nicolas Gimenez", devolvé "Gimenez Jose Nicolas"). Si es una empresa, razón social o comercio (S.A., S.R.L., SAS, Ltda., Coop., Suc., etc.) o ya viene como apellido y nombre, respetá su denominación tal como figura.
       * Teléfono ('tel'): Extrae un único número telefónico priorizando celular ('prefijo' sin el 0 inicial, 'numero' sin el prefijo móvil 15). Si no existe, null.
     - Código de Localidad ('cod_loc') para el Destinatario: Búscala en el Listado Oficial y asigna el código numérico correspondiente (ej: "00001"). Si no se encuentra, coloca null.
     - CUIT / DNI: El campo 'cuit' debe extraerse SIN guiones ni separadores (11 dígitos para empresas, 8 para DNI). Si no hay CUIT o DNI explícito, coloca null.
